@@ -48,11 +48,10 @@ jobs:
 
       - name: Simulator check (finds a robot over Bonjour, opens BEacon in the 5x1 theme)
         run: |
+          # "Sign to Run Locally": the simulator takes App Groups from entitlements Xcode links in.
           xcodebuild -project BEep.xcodeproj -target BEep -configuration Debug -sdk iphonesimulator \
-            CODE_SIGNING_ALLOWED=NO -quiet build
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= -quiet build
           APP=build/Debug-iphonesimulator/BEep.app
-          codesign -f -s - --entitlements BEepWidget/BEepWidget.entitlements "$APP/PlugIns/BEepWidget.appex"
-          codesign -f -s - --entitlements BEep/BEep.entitlements "$APP"
           python3 ci/fake-beacon.py beam/@be/be/beacon/public &
           # Advertise SSH under this Mac's own name, the way a Jibo's avahi does.
           dns-sd -R "$(scutil --get LocalHostName)" _ssh._tcp local 22 &
