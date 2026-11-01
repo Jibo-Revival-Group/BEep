@@ -4,3 +4,6 @@ BEep/Info.plist
 Payload/
 *.ipa
 .DS_Store
+BEep/BEep.entitlements
+BEepWidget/BEepWidget.entitlements
+BEepWidget/Info.plist

@@ -7,12 +7,18 @@ targets:
   BEep:
     type: application
     platform: iOS
-    sources: [BEep]
+    sources: [BEep, Shared]
+    dependencies:
+      - target: BEepWidget
+    entitlements:
+      path: BEep/BEep.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.jiborevival.beep]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.jiborevival.beep
-        MARKETING_VERSION: "1.1"
-        CURRENT_PROJECT_VERSION: "2"
+        MARKETING_VERSION: "1.2"
+        CURRENT_PROJECT_VERSION: "3"
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -38,3 +44,31 @@ targets:
         NSCalendarsUsageDescription: Send your calendar to Jibo for your personal report.
         UIBackgroundModes: [fetch]
         BGTaskSchedulerPermittedIdentifiers: [com.jiborevival.beep.refresh]
+
+  BEepWidget:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources: [BEepWidget, Shared, BEep/Assets.xcassets]
+    entitlements:
+      path: BEepWidget/BEepWidget.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.jiborevival.beep]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jiborevival.beep.widget
+        MARKETING_VERSION: "1.2"
+        CURRENT_PROJECT_VERSION: "3"
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+    info:
+      path: BEepWidget/Info.plist
+      properties:
+        CFBundleDisplayName: BEep
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        NSLocalNetworkUsageDescription: BEep looks for Jibo on your Wi-Fi and talks to it there.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true

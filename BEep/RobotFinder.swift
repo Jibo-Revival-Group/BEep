@@ -1,19 +1,12 @@
 import Foundation
 import Network
 
-struct Robot: Identifiable, Hashable, Codable {
-    var name: String
-    var host: String
-    var id: String { name }
-    var url: URL { URL(string: "http://\(host):8123/")! }
-}
-
 /// Finds Jibos on the Wi-Fi and remembers them. Jibo's avahi advertises SSH under the robot's
 /// name, so browse that and keep only hosts whose BEacon answers /api/status.
 @MainActor
 final class RobotFinder: ObservableObject {
     @Published var robots: [Robot] = RobotFinder.load() {
-        didSet { UserDefaults.standard.set(try? JSONEncoder().encode(robots), forKey: "robots") }
+        didSet { Shared.robots = robots }
     }
     private var browser: NWBrowser?
 
@@ -54,10 +47,7 @@ final class RobotFinder: ObservableObject {
         return robot
     }
 
-    nonisolated static func load() -> [Robot] {
-        guard let data = UserDefaults.standard.data(forKey: "robots") else { return [] }
-        return (try? JSONDecoder().decode([Robot].self, from: data)) ?? []
-    }
+    nonisolated static func load() -> [Robot] { Shared.robots }
 }
 
 private struct Status: Decodable {

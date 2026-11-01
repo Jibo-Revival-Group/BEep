@@ -1,13 +1,6 @@
 import SwiftUI
 
-/// 5x1 colours (5x1.com) and Liquid Glass, with a material fallback before iOS 26.
-enum Theme {
-    static let green = Color("AccentColor")
-    static let background = Color("LaunchBackground")
-    static let glow = Color(red: 0x1C / 255, green: 0x30 / 255, blue: 0x23 / 255)
-    static let backdrop = RadialGradient(colors: [glow, background], center: .top, startRadius: 0, endRadius: 650)
-}
-
+/// Liquid Glass, with a material fallback before iOS 26. (5x1 colours are in Shared.)
 extension View {
     @ViewBuilder
     func glass<S: Shape>(in shape: S, interactive: Bool = false) -> some View {

@@ -59,6 +59,9 @@ struct Home: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: Robot.self) { RobotScreen(robot: $0) }
         }
+        .overlay {
+            if UserDefaults.standard.bool(forKey: "BEepWidgetPreview") { WidgetPreview() }
+        }
         .onAppear {
             finder.start()
             autoOpen(finder.robots)
@@ -153,6 +156,29 @@ struct Home: View {
             } else {
                 addError = "No Jibo with BEacon answered at \(host). Check the address and that your phone is on the same Wi-Fi."
             }
+        }
+    }
+}
+
+/// The battery widget's faces at their real sizes; shown only by the simulator check.
+private struct WidgetPreview: View {
+    @State private var battery = Shared.battery
+
+    var body: some View {
+        VStack(spacing: 24) {
+            BatteryFace(battery: battery, size: .small)
+                .padding(16)
+                .frame(width: 170, height: 170)
+                .background(Theme.backdrop, in: RoundedRectangle(cornerRadius: 22))
+            BatteryFace(battery: battery, size: .circular)
+                .frame(width: 76, height: 76)
+                .background(.white.opacity(0.15), in: Circle())
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.black)
+        .task {
+            await Companion.shared.syncAll()
+            battery = Shared.battery
         }
     }
 }

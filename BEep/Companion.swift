@@ -3,6 +3,7 @@ import EventKit
 import Foundation
 import Photos
 import UserNotifications
+import WidgetKit
 
 /// Per-robot iPhone features, switched on in the app's BEacon (More › Settings › On this iPhone):
 /// saving Jibo's new photos, a low-battery notification, and sending this iPhone's calendar to
@@ -74,6 +75,10 @@ actor Companion {
     }
 
     func syncAll() async {
+        let before = Shared.battery
+        if let now = await Shared.refreshBattery(), now.level != before?.level || now.pluggedIn != before?.pluggedIn {
+            WidgetCenter.shared.reloadAllTimelines()
+        }
         for robot in RobotFinder.load() { await sync(robot) }
     }
 
