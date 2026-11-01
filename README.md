@@ -28,4 +28,4 @@ On a Mac: `brew install xcodegen && xcodegen`, then open `BEep.xcodeproj`.
 
 ## License
 
-Proprietary, all rights reserved. Official builds may be installed and used for personal use with your own Jibo; copying, modifying or redistributing is not allowed. See [LICENSE](LICENSE).
+BEep is free software under the GNU Affero General Public License v3.0. If you share a modified version, or run one for others over a network, you must release its source under the same licence. See [LICENSE](LICENSE).
