@@ -1,26 +1,29 @@
-"""Stand-in BEacon for the simulator check: answers /api/status like a robot and serves a page
-that opens a confirm() dialog, so one screenshot shows discovery, the web view and native dialogs."""
+"""Stand-in robot for the simulator check: serves the real BEacon page (BEam's beacon/public,
+path in argv[1]) and answers /api/status like a Jibo, so the screenshots show the real page."""
 import http.server
 import json
+import sys
 
-PAGE = b"""<!doctype html><meta name="viewport" content="width=device-width, initial-scale=1">
-<body style="font-family: -apple-system; background: #00d4f0; color: white; padding: 24px">
-<h1>Fake BEacon</h1><p id="r">Waiting for the dialog...</p>
-<script>setTimeout(function () {
-  document.getElementById('r').textContent = confirm('Dialog from BEacon') ? 'confirmed' : 'cancelled';
-}, 800);</script></body>"""
+PUBLIC = sys.argv[1]
+STATUS = {
+    'name': 'BEacon', 'host': {'name': '@be/be', 'version': '13.0.9'}, 'robot': True,
+    'hostname': 'Test-Jibo', 'uptimeSeconds': 4133,
+    'addresses': [{'iface': 'wlan0', 'address': '127.0.0.1'}],
+    'paths': {}, 'theme': {'name': 'None', 'live': True}
+}
 
 
-class Handler(http.server.BaseHTTPRequestHandler):
+class Handler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=PUBLIC, **kwargs)
+
     def do_GET(self):
-        if self.path.startswith('/api/status'):
-            body = json.dumps({'name': 'BEacon', 'hostname': 'Test-Jibo',
-                               'addresses': [{'iface': 'wlan0', 'address': '127.0.0.1'}]}).encode()
-            kind = 'application/json'
-        else:
-            body, kind = PAGE, 'text/html'
-        self.send_response(200)
-        self.send_header('Content-Type', kind)
+        if not self.path.startswith('/api/'):
+            return super().do_GET()
+        found = self.path.startswith('/api/status')
+        body = json.dumps(STATUS if found else {'error': 'Not in the simulator check'}).encode()
+        self.send_response(200 if found else 404)
+        self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(len(body)))
         self.end_headers()
         self.wfile.write(body)

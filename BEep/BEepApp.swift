@@ -3,63 +3,118 @@ import SwiftUI
 @main
 struct BEepApp: App {
     var body: some Scene {
-        WindowGroup { RobotList() }
+        WindowGroup {
+            Home()
+                .preferredColorScheme(.dark)
+                .tint(Theme.green)
+        }
     }
 }
 
-struct RobotList: View {
+struct Home: View {
     @StateObject private var finder = RobotFinder()
     @State private var path: [Robot] = []
     @State private var address = ""
     @State private var addError: String?
-    @State private var opened = false
+    // The simulator check sets this to photograph the home screen.
+    @State private var opened = UserDefaults.standard.bool(forKey: "BEepStayHome")
 
     var body: some View {
         NavigationStack(path: $path) {
-            List {
-                Section("Your robots") {
-                    ForEach(finder.robots) { robot in
-                        NavigationLink(value: robot) {
-                            VStack(alignment: .leading) {
-                                Text(robot.name)
-                                Text(robot.host).font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    .onDelete { finder.robots.remove(atOffsets: $0) }
-                    if finder.robots.isEmpty {
-                        Label("Looking for Jibo on this Wi-Fi…", systemImage: "wifi")
-                            .foregroundStyle(.secondary)
-                    }
+            ScrollView {
+                VStack(spacing: 22) {
+                    header
+                    robots
+                    addByAddress
+                    Link("Made by 5x1 · 5x1.com", destination: URL(string: "https://5x1.com")!)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
-                Section {
-                    HStack {
-                        TextField("192.168.1.20", text: $address)
-                            .keyboardType(.decimalPad)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                        Button("Add") { add() }
-                            .disabled(address.trimmingCharacters(in: .whitespaces).isEmpty)
-                    }
-                } header: {
-                    Text("Add by IP address")
-                } footer: {
-                    Text(addError ?? "Jibo's IP address is in Settings › Wi-Fi on his screen.")
-                }
+                .padding(20)
+                .frame(maxWidth: 560)
+                .frame(maxWidth: .infinity)
             }
-            .navigationTitle("BEep")
-            .navigationDestination(for: Robot.self) { robot in
-                BEaconView(robot: robot)
-                    .ignoresSafeArea(edges: .bottom)
-                    .navigationTitle(robot.name)
-                    .navigationBarTitleDisplayMode(.inline)
-            }
+            .background(Theme.backdrop.ignoresSafeArea())
             .refreshable { finder.restart() }
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(for: Robot.self) { RobotScreen(robot: $0) }
         }
         .onAppear { finder.start() }
         .onChange(of: finder.robots) { robots in
-            // With one robot, skip the list and open BEacon straight away (once per launch).
+            // With one robot, skip this screen and open BEacon straight away (once per launch).
             if !opened, robots.count == 1, path.isEmpty { opened = true; path = robots }
+        }
+    }
+
+    private var header: some View {
+        VStack(spacing: 8) {
+            Image("Logo")
+                .resizable()
+                .scaledToFit()
+                .frame(height: 104)
+                .shadow(color: Theme.green.opacity(0.35), radius: 24)
+            Text("BEep").font(.largeTitle.bold())
+            Text("Your Jibo, in your pocket.").foregroundStyle(.secondary)
+        }
+        .padding(.top, 28)
+    }
+
+    private var robots: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Your robots").font(.headline).padding(.leading, 4)
+            ForEach(finder.robots) { robot in
+                NavigationLink(value: robot) {
+                    HStack(spacing: 14) {
+                        Image("Logo").resizable().scaledToFit().frame(width: 34, height: 34)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(robot.name).font(.body.weight(.semibold)).lineLimit(1)
+                            Text(robot.host).font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+                    }
+                    .padding(16)
+                    .contentShape(RoundedRectangle(cornerRadius: 24))
+                    .glass(in: RoundedRectangle(cornerRadius: 24), interactive: true)
+                }
+                .buttonStyle(.plain)
+                .contextMenu {
+                    Button("Forget \(robot.name)", systemImage: "trash", role: .destructive) {
+                        finder.robots.removeAll { $0 == robot }
+                    }
+                }
+            }
+            if finder.robots.isEmpty {
+                HStack(spacing: 12) {
+                    ProgressView()
+                    Text("Looking for Jibo on this Wi-Fi…").foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .padding(16)
+                .glass(in: RoundedRectangle(cornerRadius: 24))
+            }
+        }
+    }
+
+    private var addByAddress: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Add by IP address").font(.headline).padding(.leading, 4)
+            HStack(spacing: 10) {
+                TextField("192.168.1.20", text: $address)
+                    .keyboardType(.decimalPad)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .padding(.leading, 6)
+                Button("Add") { add() }
+                    .prominentGlassButton()
+                    .disabled(address.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .padding(10)
+            .glass(in: Capsule())
+            Text(addError ?? "Jibo's IP address is in Settings › Wi-Fi on his screen.")
+                .font(.footnote)
+                .foregroundStyle(addError == nil ? Color.secondary : Color.red)
+                .padding(.horizontal, 4)
         }
     }
 
