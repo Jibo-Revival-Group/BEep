@@ -117,9 +117,9 @@ struct BatteryFace: View {
                     if charging { Image(systemName: "bolt.fill").foregroundStyle(Theme.green) }
                 }
                 ProgressView(value: Double(battery.level), total: 100).tint(colour)
-                Text(charging ? "Charging" : "On battery").font(.caption2).foregroundStyle(.secondary)
-                    + Text(" · ").font(.caption2).foregroundStyle(.secondary)
-                    + Text(battery.updated, style: .time).font(.caption2).foregroundStyle(.secondary)
+                (Text(charging ? "Charging · " : "On battery · ") + Text(battery.updated, style: .time))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             } else {
                 Text("Open BEep on Jibo's Wi-Fi to see his battery.")
                     .font(.caption).foregroundStyle(.secondary)

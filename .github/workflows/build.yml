@@ -37,7 +37,7 @@ jobs:
       - name: Build the IPA
         run: |
           xcodebuild -project BEep.xcodeproj -target BEep -configuration Release -sdk iphoneos \
-            CODE_SIGNING_ALLOWED=NO build | tail -5
+            CODE_SIGNING_ALLOWED=NO -quiet build
           APP=build/Release-iphoneos/BEep.app
           codesign -f -s - --entitlements BEepWidget/BEepWidget.entitlements "$APP/PlugIns/BEepWidget.appex"
           codesign -f -s - --entitlements BEep/BEep.entitlements "$APP"
@@ -49,7 +49,7 @@ jobs:
       - name: Simulator check (finds a robot over Bonjour, opens BEacon in the 5x1 theme)
         run: |
           xcodebuild -project BEep.xcodeproj -target BEep -configuration Debug -sdk iphonesimulator \
-            CODE_SIGNING_ALLOWED=NO build | tail -5
+            CODE_SIGNING_ALLOWED=NO -quiet build
           APP=build/Debug-iphonesimulator/BEep.app
           codesign -f -s - --entitlements BEepWidget/BEepWidget.entitlements "$APP/PlugIns/BEepWidget.appex"
           codesign -f -s - --entitlements BEep/BEep.entitlements "$APP"
