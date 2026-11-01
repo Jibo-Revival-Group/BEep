@@ -39,11 +39,16 @@ struct Home: View {
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: Robot.self) { RobotScreen(robot: $0) }
         }
-        .onAppear { finder.start() }
-        .onChange(of: finder.robots) { robots in
-            // With one robot, skip this screen and open BEacon straight away (once per launch).
-            if !opened, robots.count == 1, path.isEmpty { opened = true; path = robots }
+        .onAppear {
+            finder.start()
+            autoOpen(finder.robots)
         }
+        .onChange(of: finder.robots) { autoOpen($0) }
+    }
+
+    /// With one robot, skip this screen and open BEacon straight away (once per launch).
+    private func autoOpen(_ robots: [Robot]) {
+        if !opened, robots.count == 1, path.isEmpty { opened = true; path = robots }
     }
 
     private var header: some View {
