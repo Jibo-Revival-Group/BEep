@@ -96,7 +96,7 @@ struct BatteryFace: View {
 
     private var circular: some View {
         Gauge(value: Double(battery?.level ?? 0), in: 0...100) {
-            Image(systemName: charging ? "bolt.fill" : "battery.100")
+            Image(systemName: charging ? "bolt.fill" : "battery.\(min(100, (battery?.level ?? 0) / 25 * 25))")
         } currentValueLabel: {
             Text(battery.map { "\($0.level)" } ?? "–")
         }
