@@ -109,7 +109,12 @@ jobs:
           grep -q '"battery.Test-Jibo"' group.txt
           # An upgrade from 1.1 has robots only in the app's own storage: the next launch must
           # copy them into the App Group, where the widget's Jibo picker reads them.
+          # Stop the stand-in robot so rediscovering it can't save the list instead.
           xcrun simctl terminate "$UDID" com.jiborevival.beep
+          pkill -f fake-beacon.py; pkill dns-sd || true
+          APPDATA="$(xcrun simctl get_app_container "$UDID" com.jiborevival.beep data)/Library/Preferences/com.jiborevival.beep"
+          OLD=$(printf '[{"name":"Test-Jibo","host":"127.0.0.1"}]' | xxd -p | tr -d '\n')
+          xcrun simctl spawn "$UDID" defaults write "$APPDATA" robots -data "$OLD"
           xcrun simctl spawn "$UDID" defaults delete "$GROUP/Library/Preferences/group.com.jiborevival.beep" robots
           xcrun simctl spawn "$UDID" defaults read "$GROUP/Library/Preferences/group.com.jiborevival.beep" robots && exit 1
           xcrun simctl launch "$UDID" com.jiborevival.beep -BEepStayHome YES
