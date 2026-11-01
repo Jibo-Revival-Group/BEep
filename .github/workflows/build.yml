@@ -81,9 +81,9 @@ jobs:
           assert sent['icalUrl'].startswith(prefix), sent['icalUrl'][:40]
           assert 'BEGIN:VCALENDAR' in base64.b64decode(sent['icalUrl'][len(prefix):]).decode()
           print('calendar sent for zane')"
-          xcrun simctl launch "$UDID" com.apple.mobileslideshow
-          sleep 10
-          xcrun simctl io "$UDID" screenshot photos.png
+          # BEep records a photo only after Photos accepted it.
+          xcrun simctl spawn "$UDID" defaults read com.jiborevival.beep savedPhotos.Test-Jibo | tee saved.txt
+          grep -q "photo-1" saved.txt
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -94,7 +94,6 @@ jobs:
             home.png
             robot.png
             settings.png
-            photos.png
 
       - name: Release
         if: startsWith(github.ref, 'refs/tags/')
