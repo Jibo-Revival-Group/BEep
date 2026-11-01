@@ -1,5 +1,6 @@
 import Foundation
 import Network
+import WidgetKit
 
 /// Finds Jibos on the Wi-Fi and remembers them. Jibo's avahi advertises SSH under the robot's
 /// name, so browse that and keep only hosts whose BEacon answers /api/status.
@@ -9,6 +10,13 @@ final class RobotFinder: ObservableObject {
         didSet { Shared.robots = robots }
     }
     private var browser: NWBrowser?
+
+    init() {
+        // Robots saved before 1.2 are only in the app's own storage; copy them to the App Group
+        // on every launch so the widget (and its Jibo picker) can see them.
+        Shared.robots = robots
+        WidgetCenter.shared.reloadAllTimelines()
+    }
 
     func start() {
         guard browser == nil else { return }

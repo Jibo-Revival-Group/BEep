@@ -107,6 +107,14 @@ jobs:
           GROUP="$(awk '/group.com.jiborevival.beep/ {print $2}' groups.txt)"
           plutil -p "$GROUP/Library/Preferences/group.com.jiborevival.beep.plist" | tee group.txt
           grep -q '"battery.Test-Jibo"' group.txt
+          # An upgrade from 1.1 has robots only in the app's own storage: the next launch must
+          # copy them into the App Group, where the widget's Jibo picker reads them.
+          xcrun simctl terminate "$UDID" com.jiborevival.beep
+          xcrun simctl spawn "$UDID" defaults delete "$GROUP/Library/Preferences/group.com.jiborevival.beep" robots
+          xcrun simctl spawn "$UDID" defaults read "$GROUP/Library/Preferences/group.com.jiborevival.beep" robots && exit 1
+          xcrun simctl launch "$UDID" com.jiborevival.beep -BEepStayHome YES
+          sleep 8
+          xcrun simctl spawn "$UDID" defaults read "$GROUP/Library/Preferences/group.com.jiborevival.beep" robots
 
       - uses: actions/upload-artifact@v4
         if: always()
