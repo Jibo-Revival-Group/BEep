@@ -231,12 +231,12 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
       if (!panel) return;
       var wrap = document.createElement('div');
       wrap.innerHTML = '<p class="section-header">On this iPhone</p><div class="setting-block">' +
-        '<label class="unit-choice"><input type="checkbox" data-beep="savePhotos"><span>Save Jibo\u2019s new photos to this iPhone</span></label>' +
-        '<label class="unit-choice"><input type="checkbox" data-beep="lowBattery"><span>Notify me when Jibo\u2019s battery is low</span></label>' +
+        '<label class="unit-choice"><input type="checkbox" data-beep="savePhotos"><span>Save Jibo’s new photos to this iPhone</span></label>' +
+        '<label class="unit-choice"><input type="checkbox" data-beep="lowBattery"><span>Notify me when Jibo’s battery is low</span></label>' +
         '<p class="hint" id="beep-battery-hint" hidden>This Jibo needs a newer BEam to report his battery.</p>' +
-        '<div class="form-row"><label for="beep-calendar">Use this iPhone\u2019s calendar for</label>' +
+        '<div class="form-row"><label for="beep-calendar">Use this iPhone’s calendar for</label>' +
         '<select id="beep-calendar" data-beep="calendarMember"><option value="">Nobody</option></select></div>' +
-        '<p class="hint">Sends the next week of events from this iPhone in place of that person\u2019s calendar link, for their personal report.</p>' +
+        '<p class="hint">Sends the next week of events from this iPhone in place of that person’s calendar link, for their personal report.</p>' +
         '<p class="hint">These work while BEep is open and when your iPhone lets it refresh in the background, so they can lag a little.</p>' +
         '<p class="hint" id="beep-settings-status" role="status"></p></div>';
       panel.insertBefore(wrap, panel.firstChild);
@@ -246,7 +246,7 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
         [].forEach.call(inputs, function (input) {
           settings[input.getAttribute('data-beep')] = input.type === 'checkbox' ? input.checked : input.value;
         });
-        wrap.querySelector('#beep-settings-status').textContent = 'Saving\u2026';
+        wrap.querySelector('#beep-settings-status').textContent = 'Saving…';
         window.webkit.messageHandlers.beepSettings.postMessage(JSON.stringify(settings));
       }
       [].forEach.call(inputs, function (input) { input.addEventListener('change', send); });

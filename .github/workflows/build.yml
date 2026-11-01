@@ -13,6 +13,9 @@ jobs:
   build:
     # Xcode 26 (iOS 26 SDK) gives the app Liquid Glass.
     runs-on: macos-26
+    defaults:
+      run:
+        shell: bash  # adds pipefail, so `xcodebuild | tail` still fails the step on a build error
     steps:
       - uses: actions/checkout@v4
 
