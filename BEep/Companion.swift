@@ -75,11 +75,15 @@ actor Companion {
     }
 
     func syncAll() async {
-        let before = Shared.battery
-        if let now = await Shared.refreshBattery(), now.level != before?.level || now.pluggedIn != before?.pluggedIn {
-            WidgetCenter.shared.reloadAllTimelines()
+        var changed = false
+        for robot in RobotFinder.load() {
+            let before = Shared.battery(for: robot)
+            if let now = await Shared.refreshBattery(for: robot), now.level != before?.level || now.pluggedIn != before?.pluggedIn {
+                changed = true
+            }
+            await sync(robot)
         }
-        for robot in RobotFinder.load() { await sync(robot) }
+        if changed { WidgetCenter.shared.reloadAllTimelines() }
     }
 
     func sync(_ robot: Robot) async {

@@ -162,7 +162,7 @@ struct Home: View {
 
 /// The battery widget's faces at their real sizes; shown only by the simulator check.
 private struct WidgetPreview: View {
-    @State private var battery = Shared.battery
+    @State private var battery = Shared.robots.first.flatMap(Shared.battery(for:))
 
     var body: some View {
         VStack(spacing: 24) {
@@ -178,7 +178,7 @@ private struct WidgetPreview: View {
         .background(.black)
         .task {
             await Companion.shared.syncAll()
-            battery = Shared.battery
+            battery = Shared.robots.first.flatMap(Shared.battery(for:))
         }
     }
 }

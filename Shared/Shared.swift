@@ -51,25 +51,24 @@ enum Shared {
         set { defaults.set(try? JSONEncoder().encode(newValue), forKey: "robots") }
     }
 
-    static var battery: Battery? {
-        get { defaults.data(forKey: "battery").flatMap { try? JSONDecoder().decode(Battery.self, from: $0) } }
-        set { defaults.set(try? JSONEncoder().encode(newValue), forKey: "battery") }
+    /// The last battery reading for each robot, for the widget.
+    static func battery(for robot: Robot) -> Battery? {
+        defaults.data(forKey: "battery.\(robot.name)").flatMap { try? JSONDecoder().decode(Battery.self, from: $0) }
     }
 
-    /// Reads the first robot's battery from BEacon and keeps it for the widget. Returns nil when
-    /// Jibo can't be reached (another Wi-Fi) or his BEam doesn't report a battery yet.
-    static func refreshBattery() async -> Battery? {
+    /// Reads a robot's battery from BEacon and keeps it for the widget. Returns nil when Jibo
+    /// can't be reached (another Wi-Fi) or his BEam doesn't report a battery yet.
+    static func refreshBattery(for robot: Robot) async -> Battery? {
         struct Status: Decodable {
             struct Reading: Decodable { let level: Int; let pluggedIn: Bool? }
             let battery: Reading?
         }
-        guard let robot = robots.first,
-              let (data, response) = try? await URLSession.shared.data(
+        guard let (data, response) = try? await URLSession.shared.data(
                   for: URLRequest(url: URL(string: "api/status", relativeTo: robot.url)!, timeoutInterval: 5)),
               (response as? HTTPURLResponse)?.statusCode == 200,
               let reading = (try? JSONDecoder().decode(Status.self, from: data))?.battery else { return nil }
         let battery = Battery(robot: robot.name, level: reading.level, pluggedIn: reading.pluggedIn, updated: Date())
-        self.battery = battery
+        defaults.set(try? JSONEncoder().encode(battery), forKey: "battery.\(robot.name)")
         return battery
     }
 }
