@@ -1,12 +1,32 @@
 import SwiftUI
 
+import EventKit
+import UserNotifications
+
 @main
 struct BEepApp: App {
+    @Environment(\.scenePhase) private var phase
+
+    init() {
+        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
+        NotificationCenter.default.addObserver(forName: .EKEventStoreChanged, object: nil, queue: .main) { _ in
+            Task { await Companion.shared.syncAll() }
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             Home()
                 .preferredColorScheme(.dark)
                 .tint(Theme.green)
+                .onChange(of: phase) { phase in
+                    if phase == .active { Task { await Companion.shared.syncAll() } }
+                    if phase == .background { Companion.scheduleRefresh() }
+                }
+        }
+        .backgroundTask(.appRefresh(Companion.refreshID)) {
+            Companion.scheduleRefresh()
+            await Companion.shared.syncAll()
         }
     }
 }

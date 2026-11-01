@@ -27,9 +27,12 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
             WKUserScript(source: Self.theme, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         config.userContentController.addUserScript(
             WKUserScript(source: Self.bridge, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        config.userContentController.addUserScript(
+            WKUserScript(source: Self.iPhoneSettings, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         web = WKWebView(frame: .zero, configuration: config)
         super.init()
         config.userContentController.add(WeakHandler(self), name: "beep")
+        config.userContentController.add(WeakHandler(self), name: "beepSettings")
         web.uiDelegate = self
         web.navigationDelegate = self
         web.isOpaque = false
@@ -41,6 +44,7 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
         }, for: .valueChanged)
         web.scrollView.refreshControl = refresh
         web.load(URLRequest(url: robot.url))
+        Task { await Companion.shared.sync(robot) }
     }
 
     func show(_ panel: String) { call("tab", panel) }
@@ -59,12 +63,37 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
     // MARK: Page state
 
     func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == "beepSettings" {
+            guard let text = message.body as? String,
+                  let wanted = try? JSONDecoder().decode(Companion.Settings.self, from: Data(text.utf8)) else { return }
+            Task {
+                let (now, problem) = await Companion.shared.update(wanted, for: robot)
+                await showSettings(now, problem)
+            }
+            return
+        }
         struct State: Decodable { let title: String; let panel: String; let actions: [BEaconAction] }
         guard let text = message.body as? String, let state = try? JSONDecoder().decode(State.self, from: Data(text.utf8)) else { return }
         title = state.title
         panel = state.panel
         actions = state.actions
+        if !loaded, let start = UserDefaults.standard.string(forKey: "BEepPanel") { show(start) } // simulator check
         loaded = true
+    }
+
+    /// Fills in the "On this iPhone" settings that the page script adds to BEacon's Settings.
+    @MainActor
+    private func showSettings(_ settings: Companion.Settings, _ problem: String?) {
+        guard let data = try? JSONEncoder().encode(settings), let json = String(data: data, encoding: .utf8),
+              let note = try? JSONEncoder().encode(problem ?? ""), let noteJSON = String(data: note, encoding: .utf8) else { return }
+        web.evaluateJavaScript("window.__beepSettings && window.__beepSettings(\(json), \(noteJSON))")
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        Task {
+            let settings = await Companion.shared.settings(for: robot)
+            await showSettings(settings, nil)
+        }
     }
 
     // MARK: Dialogs
@@ -192,6 +221,57 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
         'body { background: #111513; padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important }' +
         '.btn-primary, .btn-primary:hover, .btn-primary:active { color: #0d2015 !important }';
       document.documentElement.appendChild(style);
+    })();
+    """
+
+    /// Adds "On this iPhone" to BEacon's Settings (app only). Values come from and go to Companion.
+    private static let iPhoneSettings = """
+    (function () {
+      var panel = document.getElementById('panel-etc');
+      if (!panel) return;
+      var wrap = document.createElement('div');
+      wrap.innerHTML = '<p class="section-header">On this iPhone</p><div class="setting-block">' +
+        '<label class="unit-choice"><input type="checkbox" data-beep="savePhotos"><span>Save Jibo\u2019s new photos to this iPhone</span></label>' +
+        '<label class="unit-choice"><input type="checkbox" data-beep="lowBattery"><span>Notify me when Jibo\u2019s battery is low</span></label>' +
+        '<p class="hint" id="beep-battery-hint" hidden>This Jibo needs a newer BEam to report his battery.</p>' +
+        '<div class="form-row"><label for="beep-calendar">Use this iPhone\u2019s calendar for</label>' +
+        '<select id="beep-calendar" data-beep="calendarMember"><option value="">Nobody</option></select></div>' +
+        '<p class="hint">Sends the next week of events from this iPhone in place of that person\u2019s calendar link, for their personal report.</p>' +
+        '<p class="hint">These work while BEep is open and when your iPhone lets it refresh in the background, so they can lag a little.</p>' +
+        '<p class="hint" id="beep-settings-status" role="status"></p></div>';
+      panel.insertBefore(wrap, panel.firstChild);
+      var inputs = wrap.querySelectorAll('[data-beep]'), select = wrap.querySelector('#beep-calendar'), member = '';
+      function send() {
+        var settings = {};
+        [].forEach.call(inputs, function (input) {
+          settings[input.getAttribute('data-beep')] = input.type === 'checkbox' ? input.checked : input.value;
+        });
+        wrap.querySelector('#beep-settings-status').textContent = 'Saving\u2026';
+        window.webkit.messageHandlers.beepSettings.postMessage(JSON.stringify(settings));
+      }
+      [].forEach.call(inputs, function (input) { input.addEventListener('change', send); });
+      window.__beepSettings = function (settings, problem) {
+        wrap.querySelector('[data-beep="savePhotos"]').checked = settings.savePhotos;
+        wrap.querySelector('[data-beep="lowBattery"]').checked = settings.lowBattery;
+        member = settings.calendarMember;
+        select.value = member;
+        wrap.querySelector('#beep-settings-status').textContent = problem;
+      };
+      fetch('/api/people').then(function (r) { return r.json(); }).then(function (data) {
+        (data.members || []).forEach(function (m) {
+          if (m.isJibo) return;
+          var option = document.createElement('option');
+          option.value = m.id;
+          option.textContent = [m.firstName, m.lastName].filter(Boolean).join(' ') || m.writtenName || 'Someone';
+          select.appendChild(option);
+        });
+        select.value = member;
+      }).catch(function () {});
+      fetch('/api/status').then(function (r) { return r.json(); }).then(function (status) {
+        if ('battery' in status) return;
+        wrap.querySelector('[data-beep="lowBattery"]').disabled = true;
+        wrap.querySelector('#beep-battery-hint').hidden = false;
+      }).catch(function () {});
     })();
     """
 

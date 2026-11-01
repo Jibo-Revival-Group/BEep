@@ -58,14 +58,40 @@ jobs:
           xcrun simctl launch "$UDID" com.jiborevival.beep
           sleep 20
           xcrun simctl io "$UDID" screenshot robot.png
+          xcrun simctl terminate "$UDID" com.jiborevival.beep
+
+      - name: Simulator check (iPhone features save a photo and send the calendar)
+        run: |
+          UDID=$(xcrun simctl list devices booted -j | python3 -c "import json,sys; print([d['udid'] for ds in json.load(sys.stdin)['devices'].values() for d in ds][0])")
+          xcrun simctl privacy "$UDID" grant photos-add com.jiborevival.beep
+          xcrun simctl privacy "$UDID" grant calendar com.jiborevival.beep
+          xcrun simctl launch "$UDID" com.jiborevival.beep -BEepPanel etc \
+            -savePhotos.Test-Jibo YES -lowBattery.Test-Jibo YES -calendarMember.Test-Jibo zane
+          sleep 25
+          xcrun simctl io "$UDID" screenshot settings.png
+          grep -q "photo downloaded" requests.log
+          python3 -c "
+          import base64, json
+          sent = json.load(open('calendar.json'))
+          assert sent['id'] == 'zane' and sent['isEnabled'] is True, sent
+          prefix = 'data:text/calendar;base64,'
+          assert sent['icalUrl'].startswith(prefix), sent['icalUrl'][:40]
+          assert 'BEGIN:VCALENDAR' in base64.b64decode(sent['icalUrl'][len(prefix):]).decode()
+          print('calendar sent for zane')"
+          xcrun simctl launch "$UDID" com.apple.mobileslideshow
+          sleep 10
+          xcrun simctl io "$UDID" screenshot photos.png
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: BEep
           path: |
             BEep.ipa
             home.png
             robot.png
+            settings.png
+            photos.png
 
       - name: Release
         if: startsWith(github.ref, 'refs/tags/')

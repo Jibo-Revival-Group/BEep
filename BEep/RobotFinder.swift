@@ -54,7 +54,7 @@ final class RobotFinder: ObservableObject {
         return robot
     }
 
-    private static func load() -> [Robot] {
+    static func load() -> [Robot] {
         guard let data = UserDefaults.standard.data(forKey: "robots") else { return [] }
         return (try? JSONDecoder().decode([Robot].self, from: data)) ?? []
     }
