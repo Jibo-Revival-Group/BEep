@@ -1,4 +1,5 @@
 import SwiftUI
+import WebKit
 
 /// BEacon full-screen under native Liquid Glass bars: the navigation bar carries BEacon's page
 /// title and its toolbar buttons, and a floating glass bar replaces BEacon's tabs.
@@ -11,7 +12,10 @@ struct RobotScreen: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            WebView(web: beacon.web).ignoresSafeArea()
+            // Full-screen so it scrolls under the glass bars, but starts below the top one.
+            GeometryReader { geometry in
+                WebView(web: beacon.web, top: geometry.safeAreaInsets.top).ignoresSafeArea()
+            }
             if beacon.loaded { GlassTabBar(beacon: beacon) }
         }
         .background(Theme.background.ignoresSafeArea())
@@ -29,9 +33,22 @@ struct RobotScreen: View {
 }
 
 private struct WebView: UIViewRepresentable {
-    let web: UIView
-    func makeUIView(context: Context) -> UIView { web }
-    func updateUIView(_ view: UIView, context: Context) {}
+    let web: WKWebView
+    let top: CGFloat
+
+    func makeUIView(context: Context) -> WKWebView {
+        web.scrollView.contentInsetAdjustmentBehavior = .never
+        return web
+    }
+
+    func updateUIView(_ web: WKWebView, context: Context) {
+        let scroll = web.scrollView
+        guard scroll.contentInset.top != top else { return }
+        let atTop = scroll.contentOffset.y <= -scroll.contentInset.top
+        scroll.contentInset.top = top
+        scroll.verticalScrollIndicatorInsets.top = top
+        if atTop { scroll.contentOffset.y = -top }
+    }
 }
 
 struct GlassTabBar: View {
