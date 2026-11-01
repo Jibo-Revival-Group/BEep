@@ -1,6 +1,6 @@
 # BEep
 
-BEacon as an iPhone and iPad app. BEep finds Jibo on your Wi-Fi and opens BEacon, his web control panel.
+BEacon as an iPhone and iPad app. BEep finds Jibo on your Wi-Fi and opens BEacon, his web control panel, in the 5x1 look with iOS 26 Liquid Glass bars (frosted material on older iOS).
 
 - Finds every Jibo on the same Wi-Fi by itself, and remembers them.
 - With one robot, it opens straight into BEacon.
