@@ -82,7 +82,8 @@ jobs:
           assert 'BEGIN:VCALENDAR' in base64.b64decode(sent['icalUrl'][len(prefix):]).decode()
           print('calendar sent for zane')"
           # BEep records a photo only after Photos accepted it.
-          xcrun simctl spawn "$UDID" defaults read com.jiborevival.beep savedPhotos.Test-Jibo | tee saved.txt
+          PREFS="$(xcrun simctl get_app_container "$UDID" com.jiborevival.beep data)/Library/Preferences/com.jiborevival.beep.plist"
+          plutil -p "$PREFS" | tee saved.txt
           grep -q "photo-1" saved.txt
 
       - uses: actions/upload-artifact@v4
