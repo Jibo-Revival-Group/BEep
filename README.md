@@ -25,3 +25,7 @@ Your phone must be on the same Wi-Fi as Jibo, and Jibo needs BEam with BEacon.
 Every push builds `BEep.ipa` on GitHub's Macs (see `.github/workflows/build.yml`). Pushing a `v*` tag publishes a release.
 
 On a Mac: `brew install xcodegen && xcodegen`, then open `BEep.xcodeproj`.
+
+## License
+
+Proprietary, all rights reserved. Official builds may be installed and used for personal use with your own Jibo; copying, modifying or redistributing is not allowed. See [LICENSE](LICENSE).
