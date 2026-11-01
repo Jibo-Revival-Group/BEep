@@ -62,7 +62,6 @@ struct GlassTabBar: View {
     private static let main = [
         Tab(panel: "status", title: "Status", icon: "info.circle"),
         Tab(panel: "screen", title: "Screen", icon: "tv"),
-        Tab(panel: "jukebox", title: "Music", icon: "music.note"),
         Tab(panel: "photos", title: "Photos", icon: "photo.on.rectangle"),
         Tab(panel: "people", title: "People", icon: "person.2")
     ]
