@@ -1,0 +1,6 @@
+build/
+BEep.xcodeproj/
+BEep/Info.plist
+Payload/
+*.ipa
+.DS_Store

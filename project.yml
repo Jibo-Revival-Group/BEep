@@ -1,0 +1,32 @@
+name: BEep
+options:
+  bundleIdPrefix: com.jiborevival
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  BEep:
+    type: application
+    platform: iOS
+    sources: [BEep]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jiborevival.beep
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    info:
+      path: BEep/Info.plist
+      properties:
+        CFBundleDisplayName: BEep
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        NSLocalNetworkUsageDescription: BEep looks for Jibo on your Wi-Fi and talks to it there.
+        # Jibo's avahi advertises only SSH, under the robot's name.
+        NSBonjourServices: [_ssh._tcp]
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        NSCameraUsageDescription: Take a photo to upload to Jibo.
+        NSPhotoLibraryAddUsageDescription: Save Jibo's photos to your library.

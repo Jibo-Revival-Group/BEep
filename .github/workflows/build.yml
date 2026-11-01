@@ -1,0 +1,54 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate the Xcode project
+        run: brew install xcodegen && xcodegen
+
+      - name: Build the unsigned IPA (AltStore/SideStore sign it on install)
+        run: |
+          xcodebuild -project BEep.xcodeproj -target BEep -configuration Release -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO build | tail -5
+          mkdir Payload && cp -R build/Release-iphoneos/BEep.app Payload/
+          zip -qry BEep.ipa Payload
+
+      - name: Simulator check (finds a robot over Bonjour, opens BEacon, shows a native dialog)
+        run: |
+          xcodebuild -project BEep.xcodeproj -target BEep -configuration Debug -sdk iphonesimulator \
+            CODE_SIGNING_ALLOWED=NO build | tail -5
+          python3 ci/fake-beacon.py &
+          # Advertise SSH under this Mac's own name, the way a Jibo's avahi does.
+          dns-sd -R "$(scutil --get LocalHostName)" _ssh._tcp local 22 &
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys; print([d['udid'] for r,ds in json.load(sys.stdin)['devices'].items() if 'iOS' in r for d in ds if d['name'].startswith('iPhone')][-1])")
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID"
+          xcrun simctl install "$UDID" build/Debug-iphonesimulator/BEep.app
+          xcrun simctl launch "$UDID" com.jiborevival.beep
+          sleep 20
+          xcrun simctl io "$UDID" screenshot simulator.png
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BEep
+          path: |
+            BEep.ipa
+            simulator.png
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" BEep.ipa --title "BEep $GITHUB_REF_NAME" --notes "# Changes:"$'\n'"- See the commit history"
