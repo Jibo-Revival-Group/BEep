@@ -53,9 +53,12 @@ actor Companion {
                 problem = "Allow notifications for BEep in iPhone Settings › Notifications."
             }
         }
-        if !wanted.calendarMember.isEmpty && wanted.calendarMember != old.calendarMember && !(await calendarAccess()) {
-            now.calendarMember = old.calendarMember
-            problem = "Allow BEep full access to your calendars in iPhone Settings › Privacy & Security › Calendars."
+        if !wanted.calendarMember.isEmpty && wanted.calendarMember != old.calendarMember {
+            let allowed = await calendarAccess()
+            if !allowed {
+                now.calendarMember = old.calendarMember
+                problem = "Allow BEep full access to your calendars in iPhone Settings › Privacy & Security › Calendars."
+            }
         }
         if now.calendarMember != old.calendarMember {
             defaults.removeObject(forKey: "sentCalendar.\(robot.name)")
