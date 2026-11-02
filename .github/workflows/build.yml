@@ -34,17 +34,24 @@ jobs:
 
       # Ad-hoc signed with the App Group entitlement (shared with the widget): AltStore/SideStore
       # read it from the IPA to set the group up, then re-sign with the user's account.
-      - name: Build the IPA
+      - name: Build the IPAs (BEep, and BEep BETA numbered by run)
         run: |
-          xcodebuild -project BEep.xcodeproj -scheme BEep -configuration Release -sdk iphoneos \
-            -derivedDataPath dd CODE_SIGNING_ALLOWED=NO -quiet build
-          APP=dd/Build/Products/Release-iphoneos/BEep.app
-          codesign -f -s - --entitlements BEepWidget/BEepWidget.entitlements "$APP/PlugIns/BEepWidget.appex"
-          codesign -f -s - --entitlements BEep/BEep.entitlements "$APP"
-          codesign -d --entitlements - "$APP" | grep -q group.com.jiborevival.beep
-          codesign -d --entitlements - "$APP/PlugIns/BEepWidget.appex" | grep -q group.com.jiborevival.beep
-          mkdir Payload && cp -R "$APP" Payload/
-          zip -qry BEep.ipa Payload
+          build() { # <configuration> <ipa> [extra settings]
+            xcodebuild -project BEep.xcodeproj -scheme BEep -configuration $1 -sdk iphoneos \
+              -derivedDataPath dd CODE_SIGNING_ALLOWED=NO "${@:3}" -quiet build
+            APP=dd/Build/Products/$1-iphoneos/BEep.app
+            codesign -f -s - --entitlements BEepWidget/BEepWidget.entitlements "$APP/PlugIns/BEepWidget.appex"
+            codesign -f -s - --entitlements BEep/BEep.entitlements "$APP"
+            codesign -d --entitlements - "$APP" | grep -q group.com.jiborevival.beep
+            codesign -d --entitlements - "$APP/PlugIns/BEepWidget.appex" | grep -q group.com.jiborevival.beep
+            rm -rf Payload && mkdir Payload && cp -R "$APP" Payload/
+            rm -f "$2" && zip -qry "$2" Payload
+          }
+          build Release BEep.ipa
+          build Beta BEep-BETA.ipa CURRENT_PROJECT_VERSION=${{ github.run_number }}
+          plutil -p Payload/BEep.app/Info.plist | grep -E 'CFBundleIdentifier|CFBundleDisplayName|CFBundleVersion'
+          plutil -p Payload/BEep.app/Info.plist | grep -q '"com.jiborevival.beep.beta"'
+          plutil -p Payload/BEep.app/PlugIns/BEepWidget.appex/Info.plist | grep -q '"com.jiborevival.beep.beta.widget"'
 
       - name: Simulator check (finds a robot over Bonjour, opens BEacon in the 5x1 theme)
         run: |
@@ -149,6 +156,7 @@ jobs:
           name: BEep
           path: |
             BEep.ipa
+            BEep-BETA.ipa
             home.png
             robot.png
             settings.png
