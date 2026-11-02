@@ -63,10 +63,10 @@ struct GlassTabBar: View {
         Tab(panel: "status", title: "Status", icon: "info.circle"),
         Tab(panel: "screen", title: "Screen", icon: "tv"),
         Tab(panel: "photos", title: "Photos", icon: "photo.on.rectangle"),
-        Tab(panel: "people", title: "People", icon: "person.2")
+        Tab(panel: "people", title: "People", icon: "person.2"),
+        Tab(panel: "store", title: "Store", icon: "storefront")
     ]
     private static let more = [
-        Tab(panel: "store", title: "Store", icon: "storefront"),
         Tab(panel: "server", title: "Server", icon: "server.rack"),
         Tab(panel: "etc", title: "Settings", icon: "gearshape")
     ]

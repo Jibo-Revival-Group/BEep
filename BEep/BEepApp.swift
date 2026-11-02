@@ -91,7 +91,7 @@ struct Home: View {
             Text("BEep").font(.largeTitle.bold())
             Text("Your Jibo, in your pocket.").foregroundStyle(.secondary)
         }
-        .padding(.top, 28)
+        .padding(.top, 4) // more would make the home screen scroll by a little on smaller iPhones
     }
 
     private var robots: some View {

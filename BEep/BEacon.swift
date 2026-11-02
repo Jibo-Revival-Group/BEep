@@ -220,7 +220,7 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
         'border: 1px solid rgba(255,255,255,.1) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 10px 30px rgba(0,0,0,.25) !important';
       var surfaces = '.card, .stat, .setting-row, .setting-block, .photo-card, .empty, .skill, .store-card, .store-switch, .store-options-menu,' +
         ' .store-options-button, .theme-details-card, .modal-box, .toast, .store-safety-note, .menu-editor, .menu-folder-edit';
-      var lighter = '.btn:not(.btn-primary):not(.btn-danger), .form-row input, .form-row select, select, input[type=text], input[type=url], textarea';
+      var lighter = '.btn:not(.btn-primary):not(.btn-danger):not(.store-details), .form-row input, .form-row select, select, input[type=text], input[type=url], textarea';
       var style = document.createElement('style');
       style.textContent = 'html:root, html:root[data-appearance="dark"] {' + colours + 'color-scheme: dark}' +
         '.toolbar, .bottom-nav { display: none !important }' +
@@ -239,7 +239,13 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
         '.store-switch-tab:focus-visible { outline-color: #29d780 !important }' +
         '.theme-download-progress progress { accent-color: #29d780 !important }' +
         '.theme-download-progress progress::-webkit-progress-value { background: #29d780 !important }' +
-        'a:not(.btn) { color: #6fe3a6 }';
+        'a:not(.btn) { color: #6fe3a6 }' +
+        // Store: Details is a text link, and its popup sits between BEep's bars on a frosted backdrop.
+        '.store-card .store-details { background: transparent !important; border: 0 !important; box-shadow: none !important;' +
+        ' -webkit-backdrop-filter: none; backdrop-filter: none; color: #6fe3a6 !important; padding: 9px 4px !important; font-weight: 600 }' +
+        '.theme-details { background: rgba(5,10,7,.55) !important; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);' +
+        ' padding: calc(env(safe-area-inset-top, 0px) + 64px) 16px calc(env(safe-area-inset-bottom, 0px) + 100px) !important }' +
+        '.theme-details .theme-details-card { background: rgba(22,31,25,.92) !important }';
       document.documentElement.appendChild(style);
     })();
     """
