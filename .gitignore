@@ -7,3 +7,8 @@ Payload/
 BEep/BEep.entitlements
 BEepWidget/BEepWidget.entitlements
 BEepWidget/Info.plist
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.kotlin/

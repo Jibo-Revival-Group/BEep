@@ -30,7 +30,7 @@ async def run(process):
 
 
 async def main():
-    await asyncssh.create_server(Robot, '127.0.0.1', PORT, server_host_keys=[asyncssh.generate_private_key('ssh-ed25519')], process_factory=run)
+    await asyncssh.create_server(Robot, '0.0.0.0', PORT, server_host_keys=[asyncssh.generate_private_key('ssh-ed25519'), asyncssh.generate_private_key('ecdsa-sha2-nistp256')], process_factory=run)
     print('fake Jibo SSH on', PORT, flush=True)
     await asyncio.Future()
 

@@ -1,0 +1,72 @@
+name: Android
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Real BEacon page for the emulator check
+        uses: actions/checkout@v4
+        with:
+          repository: Jibo-Revival-Group/BEam
+          ref: beta
+          path: beam
+          sparse-checkout: '@be/be/beacon/public'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Build BEep and BEep BETA (signed), and run the unit tests
+        env:
+          BEEP_KEYSTORE_B64: ${{ secrets.BEEP_KEYSTORE_B64 }}
+          BEEP_KEYSTORE_PASSWORD: ${{ secrets.BEEP_KEYSTORE_PASSWORD }}
+        run: |
+          echo "$BEEP_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/beep.jks"
+          export BEEP_KEYSTORE="$RUNNER_TEMP/beep.jks"
+          cd android
+          ./gradlew --no-daemon -q assembleStableRelease assembleBetaRelease testStableDebugUnitTest
+          VERSION=$(grep -o 'versionName = "[^"]*"' app/build.gradle.kts | cut -d'"' -f2)
+          cp app/build/outputs/apk/stable/release/app-stable-release.apk "../BEep-$VERSION.apk"
+          cp app/build/outputs/apk/beta/release/app-beta-release.apk "../BEep-BETA-$VERSION-$GITHUB_RUN_NUMBER.apk"
+          "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs "../BEep-$VERSION.apk" | grep -i "SHA-256"
+
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+
+      - name: Stand-in robot
+        run: |
+          python3 -m pip install -q asyncssh
+          mkdir -p fakerun
+          BEACON_ADDRESS=10.0.2.2 nohup python3 ci/fake-beacon.py beam/@be/be/beacon/public > beacon.log 2>&1 &
+          nohup python3 ci/fake-jibo-ssh.py 2222 "$PWD/fakerun" > ssh.log 2>&1 &
+          sleep 3
+
+      - name: Emulator check (home, BEacon, conversion)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: ./ci/android-check.sh
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BEep-Android
+          path: |
+            BEep-*.apk
+            android-*.png

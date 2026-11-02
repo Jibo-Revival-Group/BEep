@@ -3,13 +3,15 @@ path in argv[1]) plus just enough API for BEep's iPhone features. Logs photo dow
 requests.log and saves the calendar BEep sends to calendar.json, for the workflow to check."""
 import http.server
 import json
+import os
 import sys
 
 PUBLIC = sys.argv[1]
 STATUS = {
     'name': 'BEacon', 'host': {'name': '@be/be', 'version': '13.0.9'}, 'robot': True,
     'hostname': 'Test-Jibo', 'uptimeSeconds': 4133,
-    'addresses': [{'iface': 'wlan0', 'address': '127.0.0.1'}],
+    # The Android emulator reaches its host at 10.0.2.2 (BEACON_ADDRESS); the iPhone simulator at 127.0.0.1.
+    'addresses': [{'iface': 'wlan0', 'address': os.environ.get('BEACON_ADDRESS', '127.0.0.1')}],
     'paths': {}, 'theme': {'name': 'None', 'live': True},
     'battery': {'level': 15, 'pluggedIn': False}
 }
