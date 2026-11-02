@@ -5,7 +5,7 @@ struct ConvertView: View {
     var onDone: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
     // Launch arguments let the simulator check run a conversion against a stand-in robot.
-    @State private var host = UserDefaults.standard.string(forKey: "BEepConvert") ?? ""
+    @State private var host = ConvertView.testArgument("BEepConvert") ?? ""
     @State private var password = "jibo" // the root password every modded Jibo gets
     @State private var log: [String] = []
     @State private var running = false
@@ -52,7 +52,7 @@ struct ConvertView: View {
             }
         }
         .interactiveDismissDisabled(running)
-        .onAppear { if UserDefaults.standard.string(forKey: "BEepConvert") != nil { start() } }
+        .onAppear { if ConvertView.testArgument("BEepConvert") != nil { start() } }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
     }
 
@@ -85,10 +85,17 @@ struct ConvertView: View {
         }
     }
 
+    /// `-name value` from the launch arguments, as given (UserDefaults would parse it as a plist).
+    static func testArgument(_ name: String) -> String? {
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-" + name), i + 1 < args.count else { return nil }
+        return args[i + 1]
+    }
+
     private func start() {
         let target = host.trimmingCharacters(in: .whitespaces)
-        let port = UserDefaults.standard.integer(forKey: "BEepConvertPort")
-        let pm = UserDefaults.standard.string(forKey: "BEepConvertPM") ?? Conversion.script
+        let port = Int(ConvertView.testArgument("BEepConvertPort") ?? "") ?? 0
+        let pm = ConvertView.testArgument("BEepConvertPM") ?? Conversion.script
         running = true; outcome = nil; log = []
         UIApplication.shared.isIdleTimerDisabled = true // the phone sleeping would drop the connection
         Task {

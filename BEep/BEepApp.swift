@@ -68,7 +68,9 @@ struct Home: View {
         .onAppear {
             finder.start()
             // The simulator check opens the converter straight away (a sheet can't start presented).
-            if UserDefaults.standard.string(forKey: "BEepConvert") != nil { converting = true }
+            if ConvertView.testArgument("BEepConvert") != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { converting = true }
+            }
             autoOpen(finder.robots)
         }
         .onChange(of: finder.robots) { autoOpen($0) }
