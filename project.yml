@@ -6,7 +6,7 @@ options:
 packages:
   Citadel:
     url: https://github.com/orlandos-nl/Citadel
-    from: 0.9.0
+    exactVersion: 0.11.1  # 0.12 needs iOS 17; BEep supports iOS 16 (iPhone 8/X)
 targets:
   BEep:
     type: application
