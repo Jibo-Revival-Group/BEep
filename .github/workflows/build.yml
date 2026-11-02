@@ -131,6 +131,7 @@ jobs:
           sleep 3
           # A stand-in for PM that prints like it and ends the way it does.
           PM='echo "=== Step 1: Remount filesystem read-write ==="; sleep 2; echo "=== Step 2: Stage and install BEam and BEnch ==="; sleep 2; echo "BEam and BEnch install complete."; echo "Mode change requires a reboot. Rebooting now..."'
+          xcrun simctl terminate "$UDID" com.jiborevival.beep || true  # the widget step leaves it running
           xcrun simctl launch "$UDID" com.jiborevival.beep -BEepStayHome YES -BEepConvert 127.0.0.1 -BEepConvertPort 2222 -BEepConvertPM "$PM"
           sleep 25
           xcrun simctl io "$UDID" screenshot convert.png
