@@ -39,7 +39,8 @@ jobs:
           VERSION=$(grep -o 'versionName = "[^"]*"' app/build.gradle.kts | cut -d'"' -f2)
           cp app/build/outputs/apk/stable/release/app-stable-release.apk "../BEep-$VERSION.apk"
           cp app/build/outputs/apk/beta/release/app-beta-release.apk "../BEep-BETA-$VERSION-$GITHUB_RUN_NUMBER.apk"
-          "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs "../BEep-$VERSION.apk" | grep -i "SHA-256"
+          TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$TOOLS/apksigner" verify --print-certs "../BEep-$VERSION.apk" | grep -i "SHA-256"
 
       - name: Enable KVM for the emulator
         run: |

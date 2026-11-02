@@ -1,32 +1,79 @@
 #!/usr/bin/env python3
-"""Publish a BEep build to the AltStore source at alt.5x1.com (repo JRG5x1/alt).
+"""Publish a BEep build to apps.5x1.com (repo JRG5x1/alt).
 
-usage: ci/publish.py <ipa> <alt checkout> "<what's new>"
+usage: ci/publish.py <ipa or apk> <site checkout> "<what's new>"
 
-The IPA's bundle ID picks the app: com.jiborevival.beep (BEep) or com.jiborevival.beep.beta
-(BEep BETA). BEep's IPAs live in the site's apps/ folder. BETA builds (one per push) are release
-downloads on JRG5x1/alt instead, keeping the site repo small; only the latest KEEP stay listed.
-Everything else is read from the IPA itself, so the source always matches what's in it.
-Commit and push the alt checkout afterwards.
+iPhone (.ipa): the IPA's bundle ID picks the app in the AltStore source, source.json:
+com.jiborevival.beep (BEep) or com.jiborevival.beep.beta (BEep BETA).
+Android (.apk, named by CI BEep-<version>.apk or BEep-BETA-<version>-<build>.apk): android.json,
+which the site's Android download buttons read.
+
+BEep's builds live in the site's apps/ folder. BETA builds (one per push) are release downloads
+on JRG5x1/alt instead, keeping the site repo small; only the latest KEEP stay listed.
+alt.5x1.com, the old address, is a separate small site (JRG5x1/alt-redirect, checked out next to
+the site) that forwards browsers here and keeps a copy of source.json, because AltStore can't
+follow a page redirect; this script refreshes that copy. Commit and push both checkouts afterwards.
 """
 import datetime, json, os, plistlib, re, shutil, subprocess, sys, zipfile
 
 KEEP = 5
-ipa, alt, notes = sys.argv[1], sys.argv[2], sys.argv[3]
+SITE = 'https://apps.5x1.com'
+build_file, site, notes = sys.argv[1], sys.argv[2], sys.argv[3]
+mirror = os.path.join(os.path.dirname(os.path.abspath(site)), 'alt-redirect')
+today = datetime.date.today().isoformat()
 
-archive = zipfile.ZipFile(ipa)
+
+def beta_release(tag, title, file):
+    path = os.path.join(os.environ.get('TMPDIR', '/tmp'), os.path.basename(file))
+    if os.path.abspath(path) != os.path.abspath(file): shutil.copy(build_file, path)
+    subprocess.run(['gh', 'release', 'create', tag, '-R', 'JRG5x1/alt', '--title', title, '--notes', notes, path], check=True)
+    return 'https://github.com/JRG5x1/alt/releases/download/%s/%s' % (tag, os.path.basename(file))
+
+
+def drop_old(versions, prefix):
+    for old in versions[KEEP:]:
+        subprocess.run(['gh', 'release', 'delete', prefix + old['buildVersion'], '-R', 'JRG5x1/alt', '--yes', '--cleanup-tag'])
+    return versions[:KEEP]
+
+
+def write(path, value):
+    with open(path, 'w') as out:
+        json.dump(value, out, indent=2, ensure_ascii=False)
+        out.write('\n')
+
+
+if build_file.endswith('.apk'):
+    match = re.match(r'BEep(-BETA)?-([\d.]+)(?:-(\d+))?\.apk$', os.path.basename(build_file))
+    assert match, 'name the APK BEep-<version>.apk or BEep-BETA-<version>-<build>.apk'
+    beta, version, build = bool(match.group(1)), match.group(2), match.group(3) or ''
+    path = os.path.join(site, 'android.json')
+    android = json.load(open(path)) if os.path.exists(path) else {}
+    if beta:
+        url = beta_release('beep-android-beta-' + build, 'BEep BETA for Android %s (%s)' % (version, build), build_file)
+        entry = {'version': version, 'buildVersion': build, 'date': today, 'notes': notes, 'downloadURL': url, 'size': os.path.getsize(build_file)}
+        android['betaVersions'] = drop_old([entry] + [v for v in android.get('betaVersions', []) if v['buildVersion'] != build], 'beep-android-beta-')
+        android['beta'] = entry
+    else:
+        name = os.path.basename(build_file)
+        shutil.copy(build_file, os.path.join(site, 'apps', name))
+        android['stable'] = {'version': version, 'date': today, 'notes': notes, 'downloadURL': SITE + '/apps/' + name, 'size': os.path.getsize(build_file)}
+    write(path, android)
+    print('Android %s %s -> %s' % ('BEep BETA' if beta else 'BEep', version, (android['beta'] if beta else android['stable'])['downloadURL']))
+    sys.exit(0)
+
+archive = zipfile.ZipFile(build_file)
 plist = plistlib.loads(archive.read(next(n for n in archive.namelist() if re.match(r'Payload/[^/]+\.app/Info\.plist$', n))))
 bundle, version, build = plist['CFBundleIdentifier'], plist['CFBundleShortVersionString'], plist['CFBundleVersion']
 beta = bundle == 'com.jiborevival.beep.beta'
 assert beta or bundle == 'com.jiborevival.beep', bundle
 
-path = os.path.join(alt, 'source.json')
+path = os.path.join(site, 'source.json')
 source = json.load(open(path))
 app = next((a for a in source['apps'] if a['bundleIdentifier'] == bundle), None)
 if app is None:  # first BETA: start from BEep's listing
     stable = next(a for a in source['apps'] if a['bundleIdentifier'] == 'com.jiborevival.beep')
     app = {k: v for k, v in stable.items() if k != 'versions'}
-    app.update(name='BEep BETA', bundleIdentifier=bundle, iconURL='https://alt.5x1.com/images/beep-beta-icon.png',
+    app.update(name='BEep BETA', bundleIdentifier=bundle, iconURL=SITE + '/images/beep-beta-icon.png',
                subtitle='Try new BEep features first.',
                localizedDescription='The newest BEep, published with every change before it reaches BEep. It installs next to BEep and can have bugs.\n\n' + stable['localizedDescription'],
                versions=[])
@@ -35,28 +82,20 @@ if app is None:  # first BETA: start from BEep's listing
 app.setdefault('appPermissions', {})['privacy'] = {k: v for k, v in plist.items() if k.endswith('UsageDescription')}
 
 if beta:
-    tag, name = 'beep-beta-' + build, 'BEep-BETA-%s-%s.ipa' % (version, build)
-    shutil.copy(ipa, os.path.join(os.environ.get('TMPDIR', '/tmp'), name))
-    subprocess.run(['gh', 'release', 'create', tag, '-R', 'JRG5x1/alt', '--title', 'BEep BETA %s (%s)' % (version, build),
-                    '--notes', notes, os.path.join(os.environ.get('TMPDIR', '/tmp'), name)], check=True)
-    url = 'https://github.com/JRG5x1/alt/releases/download/%s/%s' % (tag, name)
+    url = beta_release('beep-beta-' + build, 'BEep BETA %s (%s)' % (version, build), 'BEep-BETA-%s-%s.ipa' % (version, build))
 else:
     name = 'BEep-%s.ipa' % version
-    shutil.copy(ipa, os.path.join(alt, 'apps', name))
-    url = 'https://alt.5x1.com/apps/' + name
+    shutil.copy(build_file, os.path.join(site, 'apps', name))
+    url = SITE + '/apps/' + name
 
-entry = {'version': version, 'buildVersion': build, 'date': datetime.date.today().isoformat(),
-         'localizedDescription': notes, 'downloadURL': url, 'size': os.path.getsize(ipa),
-         'minOSVersion': plist.get('MinimumOSVersion', '16.0')}
+entry = {'version': version, 'buildVersion': build, 'date': today, 'localizedDescription': notes, 'downloadURL': url,
+         'size': os.path.getsize(build_file), 'minOSVersion': plist.get('MinimumOSVersion', '16.0')}
 app['versions'] = [entry] + [v for v in app['versions'] if (v['version'], v['buildVersion']) != (version, build)]
-if beta:
-    for old in app['versions'][KEEP:]:
-        subprocess.run(['gh', 'release', 'delete', 'beep-beta-' + old['buildVersion'], '-R', 'JRG5x1/alt', '--yes', '--cleanup-tag'])
-    app['versions'] = app['versions'][:KEEP]
+if beta: app['versions'] = drop_old(app['versions'], 'beep-beta-')
 # Older SideStore reads the newest version from these.
 app.update(version=version, versionDate=entry['date'], versionDescription=notes, downloadURL=url, size=entry['size'])
 
-with open(path, 'w') as out:
-    json.dump(source, out, indent=2, ensure_ascii=False)
-    out.write('\n')
+write(path, source)
+if os.path.isdir(mirror): shutil.copy(path, os.path.join(mirror, 'source.json'))
+else: print('warning: no %s checkout; alt.5x1.com/source.json not refreshed' % mirror)
 print('%s %s (%s) -> %s' % (app['name'], version, build, url))
