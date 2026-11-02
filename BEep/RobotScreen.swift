@@ -71,22 +71,55 @@ struct GlassTabBar: View {
         Tab(panel: "etc", title: "Settings", icon: "gearshape")
     ]
 
+    // The selection is one glass bubble, as in iOS 26's tab bar: it springs to the chosen tab,
+    // swells while pressed, and follows a finger dragged along the bar (lifting selects).
+    @State private var dragX: CGFloat?
+
+    private var selectedIndex: Int {
+        Self.main.firstIndex { $0.panel == beacon.panel } ?? (Self.more.contains { $0.panel == beacon.panel } ? Self.main.count : 0)
+    }
+
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(Self.main) { tab in
-                Button { beacon.show(tab.panel) } label: {
-                    item(tab.title, tab.icon, selected: beacon.panel == tab.panel)
+        GeometryReader { geometry in
+            let width = geometry.size.width / CGFloat(Self.main.count + 1)
+            let x = dragX.map { min(max($0 - width / 2, 0), width * CGFloat(Self.main.count - 1)) } ?? width * CGFloat(selectedIndex)
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.clear)
+                    .selectionGlass()
+                    .frame(width: width, height: 50)
+                    .scaleEffect(dragX == nil ? 1 : 1.12)
+                    .offset(x: x)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.72), value: x)
+                    .animation(.spring(response: 0.25, dampingFraction: 0.6), value: dragX == nil)
+                HStack(spacing: 0) {
+                    ForEach(Array(Self.main.enumerated()), id: \.element.id) { index, tab in
+                        Button { beacon.show(tab.panel) } label: {
+                            item(tab.title, tab.icon, selected: dragX == nil ? selectedIndex == index : Int(x / width + 0.5) == index)
+                        }
+                    }
+                    Menu {
+                        ForEach(Self.more) { tab in
+                            Button(tab.title, systemImage: tab.icon) { beacon.show(tab.panel) }
+                        }
+                    } label: {
+                        item("More", "ellipsis.circle", selected: dragX == nil && selectedIndex == Self.main.count)
+                    }
                 }
+                .buttonStyle(.plain)
             }
-            Menu {
-                ForEach(Self.more) { tab in
-                    Button(tab.title, systemImage: tab.icon) { beacon.show(tab.panel) }
-                }
-            } label: {
-                item("More", "ellipsis.circle", selected: Self.more.contains { $0.panel == beacon.panel })
-            }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 8)
+                    .onChanged { value in if value.startLocation.x < width * CGFloat(Self.main.count) { dragX = value.location.x } }
+                    .onEnded { value in
+                        guard dragX != nil else { return }
+                        let index = min(max(Int(value.location.x / width), 0), Self.main.count - 1)
+                        dragX = nil
+                        beacon.show(Self.main[index].panel)
+                    }
+            )
         }
-        .buttonStyle(.plain)
+        .frame(height: 50)
         .padding(5)
         .glass(in: Capsule(), interactive: true)
         .padding(.horizontal, 14)
@@ -100,8 +133,18 @@ struct GlassTabBar: View {
         }
         .foregroundStyle(selected ? Theme.green : Color.primary)
         .frame(maxWidth: .infinity, minHeight: 50)
-        .background(selected ? Theme.green.opacity(0.16) : .clear, in: Capsule())
         .contentShape(Capsule())
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func selectionGlass() -> some View {
+        if #available(iOS 26, *) {
+            glassEffect(.regular.tint(Theme.green.opacity(0.22)).interactive(), in: Capsule())
+        } else {
+            background(Theme.green.opacity(0.16), in: Capsule())
+        }
     }
 }
