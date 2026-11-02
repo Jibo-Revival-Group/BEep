@@ -241,8 +241,8 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
         '.theme-download-progress progress::-webkit-progress-value { background: #29d780 !important }' +
         'a:not(.btn) { color: #6fe3a6 }' +
         // Store: Details is a text link, and its popup sits between BEep's bars on a frosted backdrop.
-        '.store-card .store-details { background: transparent !important; border: 0 !important; box-shadow: none !important;' +
-        ' -webkit-backdrop-filter: none; backdrop-filter: none; color: #6fe3a6 !important; padding: 9px 4px !important; font-weight: 600 }' +
+        '.store-card .store-details { background: rgba(255,255,255,.06) !important; border: 1px solid rgba(255,255,255,.12) !important;' +
+        ' -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); color: #6fe3a6 !important; padding: 9px 26px !important; border-radius: 10px; font-weight: 600 }' +
         '.theme-details { background: rgba(5,10,7,.55) !important; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);' +
         ' padding: calc(env(safe-area-inset-top, 0px) + 64px) 16px calc(env(safe-area-inset-bottom, 0px) + 100px) !important }' +
         '.theme-details .theme-details-card { background: rgba(22,31,25,.92) !important }';
