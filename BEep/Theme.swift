@@ -20,6 +20,16 @@ extension View {
         }
     }
 
+    /// A screen that fits doesn't move at all (iOS 16.4+; earlier iOS always bounces).
+    @ViewBuilder
+    func bounceOnlyWhenTaller() -> some View {
+        if #available(iOS 16.4, *) {
+            scrollBounceBehavior(.basedOnSize, axes: .vertical)
+        } else {
+            self
+        }
+    }
+
     @ViewBuilder
     func subtitle(_ text: String) -> some View {
         if #available(iOS 26, *) {

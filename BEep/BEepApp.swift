@@ -43,7 +43,7 @@ struct Home: View {
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
-                VStack(spacing: 22) {
+                VStack(spacing: 16) {
                     header
                     robots
                     addByAddress
@@ -52,10 +52,12 @@ struct Home: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
-                .padding(20)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
                 .frame(maxWidth: 560)
                 .frame(maxWidth: .infinity)
             }
+            .bounceOnlyWhenTaller()
             .background(Theme.backdrop.ignoresSafeArea())
             .refreshable { finder.restart() }
             .toolbar(.hidden, for: .navigationBar)
@@ -86,7 +88,7 @@ struct Home: View {
             Image("Logo")
                 .resizable()
                 .scaledToFit()
-                .frame(height: 104)
+                .frame(height: 84)
                 .shadow(color: Theme.green.opacity(0.35), radius: 24)
             Text("BEep").font(.largeTitle.bold())
             Text("Your Jibo, in your pocket.").foregroundStyle(.secondary)
