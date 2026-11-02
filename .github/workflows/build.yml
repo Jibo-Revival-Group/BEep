@@ -36,9 +36,9 @@ jobs:
       # read it from the IPA to set the group up, then re-sign with the user's account.
       - name: Build the IPA
         run: |
-          xcodebuild -project BEep.xcodeproj -target BEep -configuration Release -sdk iphoneos \
-            CODE_SIGNING_ALLOWED=NO -quiet build
-          APP=build/Release-iphoneos/BEep.app
+          xcodebuild -project BEep.xcodeproj -scheme BEep -configuration Release -sdk iphoneos \
+            -derivedDataPath dd CODE_SIGNING_ALLOWED=NO -quiet build
+          APP=dd/Build/Products/Release-iphoneos/BEep.app
           codesign -f -s - --entitlements BEepWidget/BEepWidget.entitlements "$APP/PlugIns/BEepWidget.appex"
           codesign -f -s - --entitlements BEep/BEep.entitlements "$APP"
           codesign -d --entitlements - "$APP" | grep -q group.com.jiborevival.beep
@@ -49,9 +49,10 @@ jobs:
       - name: Simulator check (finds a robot over Bonjour, opens BEacon in the 5x1 theme)
         run: |
           # "Sign to Run Locally": the simulator takes App Groups from entitlements Xcode links in.
-          xcodebuild -project BEep.xcodeproj -target BEep -configuration Debug -sdk iphonesimulator \
+          xcodebuild -project BEep.xcodeproj -scheme BEep -configuration Debug -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath dd \
             CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= -quiet build
-          APP=build/Debug-iphonesimulator/BEep.app
+          APP=dd/Build/Products/Debug-iphonesimulator/BEep.app
           python3 ci/fake-beacon.py beam/@be/be/beacon/public &
           # Advertise SSH under this Mac's own name, the way a Jibo's avahi does.
           dns-sd -R "$(scutil --get LocalHostName)" _ssh._tcp local 22 &

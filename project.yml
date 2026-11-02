@@ -12,6 +12,7 @@ targets:
     type: application
     platform: iOS
     sources: [BEep, Shared]
+    scheme: {}  # Swift packages (Citadel) only build through a scheme
     dependencies:
       - target: BEepWidget
       - package: Citadel
