@@ -91,6 +91,19 @@ class RobotActivity : Activity() {
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                 if (request.isForMainFrame) cantReach()
             }
+            // If the page's renderer dies (low memory), Android kills the whole app unless it's
+            // handled here: start the robot screen afresh instead.
+            override fun onRenderProcessGone(view: WebView, detail: android.webkit.RenderProcessGoneDetail): Boolean {
+                if (isFinishing) return true
+                (view.parent as? android.view.ViewGroup)?.removeView(view); view.destroy()
+                val again = System.currentTimeMillis() - lastRendererCrash < 30_000
+                lastRendererCrash = System.currentTimeMillis()
+                if (again) { // crashing over and over: don't loop
+                    Toast.makeText(this@RobotActivity, "This phone couldn't show BEacon. Try again in a moment.", Toast.LENGTH_LONG).show()
+                    finish()
+                } else recreate()
+                return true
+            }
         }
         web.webChromeClient = object : WebChromeClient() {
             override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
@@ -234,5 +247,7 @@ class RobotActivity : Activity() {
         else super.onActivityResult(request, result, data)
     }
 
-    override fun onDestroy() { web.destroy(); super.onDestroy() }
+    companion object { private var lastRendererCrash = 0L }
+
+    override fun onDestroy() { if (web.parent != null) web.destroy(); super.onDestroy() }
 }
