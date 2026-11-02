@@ -6,7 +6,6 @@ struct ConvertView: View {
     @Environment(\.dismiss) private var dismiss
     // Launch arguments let the simulator check run a conversion against a stand-in robot.
     @State private var host = ConvertView.testArgument("BEepConvert") ?? ""
-    @State private var password = "jibo" // the root password every modded Jibo gets
     @State private var log: [String] = []
     @State private var running = false
     @State private var outcome: Conversion.Outcome?
@@ -17,14 +16,10 @@ struct ConvertView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Installs 5x1 (BEam and BEnch) on a Jibo that has already been modded, then restarts him. Keep BEep open; it takes several minutes.")
                         .foregroundStyle(.secondary)
-                    VStack(spacing: 10) {
-                        TextField("Jibo's IP address", text: $host)
-                            .keyboardType(.decimalPad)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                        Divider()
-                        SecureField("Root password", text: $password)
-                    }
+                    TextField("Jibo's IP address", text: $host)
+                        .keyboardType(.decimalPad)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
                     .padding(16)
                     .glass(in: RoundedRectangle(cornerRadius: 22))
                     .disabled(running)
@@ -34,7 +29,7 @@ struct ConvertView: View {
                     }
                     .prominentGlassButton()
                     .controlSize(.large)
-                    .disabled(running || host.trimmingCharacters(in: .whitespaces).isEmpty || password.isEmpty)
+                    .disabled(running || host.trimmingCharacters(in: .whitespaces).isEmpty)
                     status
                     if !log.isEmpty { output }
                 }
@@ -99,7 +94,7 @@ struct ConvertView: View {
         running = true; outcome = nil; log = []
         UIApplication.shared.isIdleTimerDisabled = true // the phone sleeping would drop the connection
         Task {
-            let result = await Conversion.run(host: target, port: port > 0 ? port : 22, password: password, pm: pm) { line in
+            let result = await Conversion.run(host: target, port: port > 0 ? port : 22, password: "jibo", pm: pm) { line in // "jibo" is every modded Jibo's root password
                 Task { @MainActor in log.append(line); if log.count > 3000 { log.removeFirst(500) } }
             }
             await MainActor.run {

@@ -44,7 +44,7 @@ enum Conversion {
                 hostKeyValidator: .acceptAnything(), // a freshly modded Jibo has a host key we can't know in advance
                 reconnect: .never)
         } catch {
-            return .failed("Couldn't log in to \(host) over SSH. Check the address and password, and that Jibo has been modded (\(error)).")
+            return .failed("Couldn't log in to \(host) over SSH. Check the address and that Jibo has been modded (\(error)).")
         }
         defer { Task { try? await client.close() } }
         var pending = "", result: Outcome?
