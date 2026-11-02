@@ -36,7 +36,7 @@ struct Home: View {
     @State private var path: [Robot] = []
     @State private var address = ""
     @State private var addError: String?
-    @State private var converting = UserDefaults.standard.string(forKey: "BEepConvert") != nil
+    @State private var converting = false
     // The simulator check sets this to photograph the home screen.
     @State private var opened = UserDefaults.standard.bool(forKey: "BEepStayHome")
 
@@ -67,6 +67,8 @@ struct Home: View {
         .sheet(isPresented: $converting) { ConvertView { finder.restart() } }
         .onAppear {
             finder.start()
+            // The simulator check opens the converter straight away (a sheet can't start presented).
+            if UserDefaults.standard.string(forKey: "BEepConvert") != nil { converting = true }
             autoOpen(finder.robots)
         }
         .onChange(of: finder.robots) { autoOpen($0) }
