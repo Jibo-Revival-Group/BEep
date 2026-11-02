@@ -36,6 +36,7 @@ struct Home: View {
     @State private var path: [Robot] = []
     @State private var address = ""
     @State private var addError: String?
+    @State private var converting = UserDefaults.standard.string(forKey: "BEepConvert") != nil
     // The simulator check sets this to photograph the home screen.
     @State private var opened = UserDefaults.standard.bool(forKey: "BEepStayHome")
 
@@ -46,6 +47,7 @@ struct Home: View {
                     header
                     robots
                     addByAddress
+                    convert
                     Link("Made by 5x1 · 5x1.com", destination: URL(string: "https://5x1.com")!)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
@@ -62,6 +64,7 @@ struct Home: View {
         .overlay {
             if UserDefaults.standard.bool(forKey: "BEepWidgetPreview") { WidgetPreview() }
         }
+        .sheet(isPresented: $converting) { ConvertView { finder.restart() } }
         .onAppear {
             finder.start()
             autoOpen(finder.robots)
@@ -143,6 +146,27 @@ struct Home: View {
                 .font(.footnote)
                 .foregroundStyle(addError == nil ? Color.secondary : Color.red)
                 .padding(.horizontal, 4)
+        }
+    }
+
+    private var convert: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("New to 5x1?").font(.headline).padding(.leading, 4)
+            Button { converting = true } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: "arrow.triangle.2.circlepath").font(.title3).foregroundStyle(Theme.green)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Convert a Jibo to 5x1").font(.body.weight(.semibold))
+                        Text("For a modded Jibo: installs 5x1 over SSH.").font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+                }
+                .padding(16)
+                .contentShape(RoundedRectangle(cornerRadius: 24))
+                .glass(in: RoundedRectangle(cornerRadius: 24), interactive: true)
+            }
+            .buttonStyle(.plain)
         }
     }
 

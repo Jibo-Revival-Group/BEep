@@ -121,6 +121,26 @@ jobs:
           sleep 8
           xcrun simctl spawn "$UDID" defaults read "$GROUP/Library/Preferences/group.com.jiborevival.beep" robots
 
+      - name: Simulator check (converts a modded Jibo over SSH)
+        run: |
+          UDID=$(xcrun simctl list devices booted -j | python3 -c "import json,sys; print([d['udid'] for ds in json.load(sys.stdin)['devices'].values() for d in ds][0])")
+          python3 -m pip install -q --break-system-packages asyncssh || python3 -m pip install -q asyncssh
+          mkdir -p fakerun
+          python3 ci/fake-jibo-ssh.py 2222 "$PWD/fakerun" &
+          sleep 3
+          # A stand-in for PM that prints like it and ends the way it does.
+          PM='echo "=== Step 1: Remount filesystem read-write ==="; sleep 2; echo "=== Step 2: Stage and install BEam and BEnch ==="; sleep 2; echo "BEam and BEnch install complete."; echo "Mode change requires a reboot. Rebooting now..."'
+          xcrun simctl launch "$UDID" com.jiborevival.beep -BEepStayHome YES -BEepConvert 127.0.0.1 -BEepConvertPort 2222 -BEepConvertPM "$PM"
+          sleep 25
+          xcrun simctl io "$UDID" screenshot convert.png
+          cat fakerun/commands.log
+          grep -q "5x1-pm.started" fakerun/commands.log
+          cat fakerun/5x1-pm.log
+          grep -q "Rebooting now" fakerun/5x1-pm.log
+          grep -q "5X1_PM_EXIT 0" fakerun/5x1-pm.log
+          test ! -f fakerun/5x1-pm.started  # cleared when PM finished
+          xcrun simctl terminate "$UDID" com.jiborevival.beep
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -131,6 +151,7 @@ jobs:
             robot.png
             settings.png
             widget.png
+            convert.png
 
       - name: Release
         if: startsWith(github.ref, 'refs/tags/')
