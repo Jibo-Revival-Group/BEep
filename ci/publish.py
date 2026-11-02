@@ -13,6 +13,10 @@ on JRG5x1/alt instead, keeping the site repo small; only the latest KEEP stay li
 alt.5x1.com, the old address, is a separate small site (JRG5x1/alt-redirect, checked out next to
 the site) that forwards browsers here and keeps a copy of source.json, because AltStore can't
 follow a page redirect; this script refreshes that copy. Commit and push both checkouts afterwards.
+
+Android builds also go into the 5x1 F-Droid repo (apps.5x1.com/fdroid/repo). Its workspace, with the
+index signing key, is FDROID (private, never in the site); the signed repo/ folder is synced into the
+site's fdroid/repo. Needs the JDK and SDK in /root/android-tools.
 """
 import datetime, json, os, plistlib, re, shutil, subprocess, sys, zipfile
 
@@ -34,6 +38,29 @@ def drop_old(versions, prefix):
     for old in versions[KEEP:]:
         subprocess.run(['gh', 'release', 'delete', prefix + old['buildVersion'], '-R', 'JRG5x1/alt', '--yes', '--cleanup-tag'])
     return versions[:KEEP]
+
+
+FDROID = '/root/jibo-stuff/BEep-signing/fdroid'
+TOOLS = '/root/android-tools'
+
+
+def fdroid_publish(apk, package, version_code):
+    if not os.path.isdir(FDROID):
+        print('warning: no %s; F-Droid repo not updated' % FDROID); return
+    repo = os.path.join(FDROID, 'repo')
+    shutil.copy(apk, repo)
+    changelogs = os.path.join(FDROID, 'metadata', package, 'en-US', 'changelogs')
+    os.makedirs(changelogs, exist_ok=True)
+    with open(os.path.join(changelogs, '%s.txt' % version_code), 'w') as out: out.write(notes + '\n')
+    # Keep the newest KEEP builds of this app; F-Droid lists every APK left in repo/.
+    pattern = re.compile(r'BEep-BETA-[\d.]+-(\d+)\.apk$' if package.endswith('.beta') else r'BEep-([\d.]+)\.apk$')
+    mine = [f for f in os.listdir(repo) if pattern.match(f)]
+    key = (lambda f: int(pattern.match(f).group(1))) if package.endswith('.beta') else (lambda f: [int(x) for x in pattern.match(f).group(1).split('.')])
+    for old in sorted(mine, key=key)[:-KEEP]: os.remove(os.path.join(repo, old))
+    env = dict(os.environ, JAVA_HOME=TOOLS + '/jdk', ANDROID_HOME=TOOLS + '/sdk', PATH=TOOLS + '/jdk/bin:' + os.environ['PATH'])
+    subprocess.run([os.path.join(os.path.dirname(FDROID), 'fdroid-venv/bin/fdroid'), 'update'], cwd=FDROID, env=env, check=True)
+    subprocess.run(['rsync', '-a', '--delete', repo + '/', os.path.join(site, 'fdroid', 'repo') + '/'], check=True)
+    print('F-Droid repo updated: %s %s' % (package, version_code))
 
 
 def write(path, value):
@@ -59,6 +86,10 @@ if build_file.endswith('.apk'):
         android['stable'] = {'version': version, 'date': today, 'notes': notes, 'downloadURL': SITE + '/apps/' + name, 'size': os.path.getsize(build_file)}
     write(path, android)
     print('Android %s %s -> %s' % ('BEep BETA' if beta else 'BEep', version, (android['beta'] if beta else android['stable'])['downloadURL']))
+    badging = subprocess.run([sorted(__import__('glob').glob(TOOLS + '/sdk/build-tools/*/aapt2'))[-1], 'dump', 'badging', build_file],
+                             capture_output=True, text=True, check=True).stdout
+    package, version_code = re.search(r"package: name='([^']+)' versionCode='(\d+)'", badging).groups()
+    fdroid_publish(build_file, package, version_code)
     sys.exit(0)
 
 archive = zipfile.ZipFile(build_file)
