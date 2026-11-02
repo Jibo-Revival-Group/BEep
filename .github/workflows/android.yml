@@ -63,6 +63,7 @@ jobs:
           arch: x86_64
           disable-animations: true
           emulator-boot-timeout: 900
+          disk-size: 2048M  # the runner has ~7 GB free; the default 7.4 GB partition does not fit
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: ./ci/android-check.sh
 
