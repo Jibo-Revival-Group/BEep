@@ -5,9 +5,9 @@ import Photos
 import UserNotifications
 import WidgetKit
 
-/// Per-robot iPhone features, switched on in the app's BEacon (More › Settings › On this iPhone):
-/// saving Jibo's new photos, a low-battery notification, and sending this iPhone's calendar to
-/// one person. They run when BEep opens, when a robot is opened, when the phone's calendar
+/// Per-robot iPhone features, switched on in the app's BEacon (More › Settings › On this iPhone)
+/// or when a robot is first opened: saving Jibo's new photos, a low-battery notification, sending
+/// this iPhone's calendar to one person, and who this phone belongs to (for its battery). They run when BEep opens, when a robot is opened, when the phone's calendar
 /// changes, and when iOS gives BEep background refresh time.
 actor Companion {
     static let shared = Companion()
@@ -17,6 +17,7 @@ actor Companion {
         var savePhotos = false
         var lowBattery = false
         var calendarMember = ""
+        var member = ""
     }
 
     private let defaults = UserDefaults.standard
@@ -26,7 +27,8 @@ actor Companion {
     func settings(for robot: Robot) -> Settings {
         Settings(savePhotos: defaults.bool(forKey: "savePhotos.\(robot.name)"),
                  lowBattery: defaults.bool(forKey: "lowBattery.\(robot.name)"),
-                 calendarMember: defaults.string(forKey: "calendarMember.\(robot.name)") ?? "")
+                 calendarMember: defaults.string(forKey: "calendarMember.\(robot.name)") ?? "",
+                 member: Shared.member(for: robot))
     }
 
     /// Applies a change from BEacon, asking for the iPhone permission it needs. Returns the
@@ -70,6 +72,7 @@ actor Companion {
         defaults.set(now.savePhotos, forKey: "savePhotos.\(robot.name)")
         defaults.set(now.lowBattery, forKey: "lowBattery.\(robot.name)")
         defaults.set(now.calendarMember, forKey: "calendarMember.\(robot.name)")
+        Shared.setMember(now.member, for: robot)
         await sync(robot)
         return (now, problem)
     }
@@ -91,6 +94,7 @@ actor Companion {
         guard syncing.insert(robot.name).inserted else { return }
         defer { syncing.remove(robot.name) }
         let settings = settings(for: robot)
+        await Shared.reportPhoneBattery(to: robot)
         if settings.savePhotos { await savePhotos(robot) }
         if settings.lowBattery { await checkBattery(robot) }
         if !settings.calendarMember.isEmpty { await sendCalendar(to: settings.calendarMember, robot) }
@@ -230,15 +234,7 @@ actor Companion {
     }
 
     private func request(_ robot: Robot, _ method: String, _ path: String, body: Data? = nil) async throws -> Data {
-        var request = URLRequest(url: URL(string: path, relativeTo: robot.url)!, timeoutInterval: 20)
-        request.httpMethod = method
-        if let body {
-            request.httpBody = body
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        }
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
-        return data
+        try await Shared.data(robot, method, path, body: body)
     }
 }
 

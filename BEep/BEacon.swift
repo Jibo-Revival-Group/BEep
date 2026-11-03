@@ -19,6 +19,7 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
     let robot: Robot
     let web: WKWebView
     private var downloads: [ObjectIdentifier: URL] = [:]
+    private var usingRemote = false
 
     init(robot: Robot) {
         self.robot = robot
@@ -43,16 +44,25 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
             self?.web.scrollView.refreshControl?.endRefreshing()
         }, for: .valueChanged)
         web.scrollView.refreshControl = refresh
-        web.load(URLRequest(url: robot.url))
+        web.load(localRequest)
         Task { await Companion.shared.sync(robot) }
     }
 
     func show(_ panel: String) { call("tab", panel) }
     func perform(_ action: BEaconAction) { call("act", action.action) }
 
-    /// The "can't reach" page isn't BEacon, so retry BEacon itself.
+    /// The "can't reach" page isn't BEacon, so retry BEacon itself (on Wi-Fi first).
     func reload() {
-        if web.url?.host == robot.host { web.reload() } else { web.load(URLRequest(url: robot.url)) }
+        if isBEacon(web.url) { web.reload() } else { usingRemote = false; web.load(localRequest) }
+    }
+
+    /// Away from home the Wi-Fi address may never answer, so with a remote address to try, give up on it sooner.
+    private var localRequest: URLRequest {
+        URLRequest(url: robot.url, timeoutInterval: robot.remoteURL == nil ? 60 : 6)
+    }
+
+    private func isBEacon(_ url: URL?) -> Bool {
+        url?.host != nil && (url?.host == robot.host || url?.host == robot.remoteURL?.host)
     }
 
     private func call(_ function: String, _ argument: String) {
@@ -83,7 +93,7 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
 
     /// Fills in the "On this iPhone" settings that the page script adds to BEacon's Settings.
     @MainActor
-    private func showSettings(_ settings: Companion.Settings, _ problem: String?) {
+    func showSettings(_ settings: Companion.Settings, _ problem: String?) {
         guard let data = try? JSONEncoder().encode(settings), let json = String(data: data, encoding: .utf8),
               let note = try? JSONEncoder().encode(problem ?? ""), let noteJSON = String(data: note, encoding: .utf8) else { return }
         web.evaluateJavaScript("window.__beepSettings && window.__beepSettings(\(json), \(noteJSON))")
@@ -134,7 +144,7 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction,
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         if action.shouldPerformDownload { return decisionHandler(.download) }
-        if let url = action.request.url, url.host != robot.host, action.navigationType == .linkActivated {
+        if let url = action.request.url, !isBEacon(url), action.navigationType == .linkActivated {
             UIApplication.shared.open(url)
             return decisionHandler(.cancel)
         }
@@ -149,6 +159,11 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        if !usingRemote, let remote = robot.remoteURL {
+            usingRemote = true
+            webView.load(URLRequest(url: remote))
+            return
+        }
         loaded = false
         title = ""
         actions = []
@@ -156,7 +171,7 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <body style="font: -apple-system-body; text-align: center; padding: 120px 24px; color: #b0bbb2; background: #111513">
         <h3 style="color: #eef1ec">Can't reach \(robot.name)</h3>
-        <p>Make sure Jibo is on and your phone is on the same Wi-Fi, then pull down to try again.</p>
+        <p>Make sure Jibo is on and your phone is on the same Wi-Fi\(robot.remoteURL == nil ? "" : ", or that his remote address works"), then pull down to try again.</p>
         </body>
         """
         webView.loadHTMLString(page, baseURL: nil)
@@ -260,13 +275,16 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
         '<label class="unit-choice"><input type="checkbox" data-beep="savePhotos"><span>Save Jibo’s new photos to this iPhone</span></label>' +
         '<label class="unit-choice"><input type="checkbox" data-beep="lowBattery"><span>Notify me when Jibo’s battery is low</span></label>' +
         '<p class="hint" id="beep-battery-hint" hidden>This Jibo needs a newer BEam to report his battery.</p>' +
+        '<div class="form-row"><label for="beep-member">This iPhone belongs to</label>' +
+        '<select id="beep-member" data-beep="member"><option value="">Nobody chosen</option></select></div>' +
+        '<p class="hint">So Jibo can tell you this phone’s battery when you ask “How is my phone’s battery?”</p>' +
         '<div class="form-row"><label for="beep-calendar">Use this iPhone’s calendar for</label>' +
         '<select id="beep-calendar" data-beep="calendarMember"><option value="">Nobody</option></select></div>' +
         '<p class="hint">Sends the next week of events from this iPhone in place of that person’s calendar link, for their personal report.</p>' +
         '<p class="hint">These work while BEep is open and when your iPhone lets it refresh in the background, so they can lag a little.</p>' +
         '<p class="hint" id="beep-settings-status" role="status"></p></div>';
       panel.insertBefore(wrap, panel.firstChild);
-      var inputs = wrap.querySelectorAll('[data-beep]'), select = wrap.querySelector('#beep-calendar'), member = '';
+      var inputs = wrap.querySelectorAll('[data-beep]'), selects = wrap.querySelectorAll('select[data-beep]'), chosen = {};
       function send() {
         var settings = {};
         [].forEach.call(inputs, function (input) {
@@ -279,19 +297,21 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
       window.__beepSettings = function (settings, problem) {
         wrap.querySelector('[data-beep="savePhotos"]').checked = settings.savePhotos;
         wrap.querySelector('[data-beep="lowBattery"]').checked = settings.lowBattery;
-        member = settings.calendarMember;
-        select.value = member;
+        chosen = { calendarMember: settings.calendarMember, member: settings.member };
+        [].forEach.call(selects, function (s) { s.value = chosen[s.getAttribute('data-beep')]; });
         wrap.querySelector('#beep-settings-status').textContent = problem;
       };
       fetch('/api/people').then(function (r) { return r.json(); }).then(function (data) {
-        (data.members || []).forEach(function (m) {
-          if (m.isJibo) return;
-          var option = document.createElement('option');
-          option.value = m.id;
-          option.textContent = [m.firstName, m.lastName].filter(Boolean).join(' ') || m.writtenName || 'Someone';
-          select.appendChild(option);
+        [].forEach.call(selects, function (select) {
+          (data.members || []).forEach(function (m) {
+            if (m.isJibo) return;
+            var option = document.createElement('option');
+            option.value = m.id;
+            option.textContent = [m.firstName, m.lastName].filter(Boolean).join(' ') || m.writtenName || 'Someone';
+            select.appendChild(option);
+          });
+          select.value = chosen[select.getAttribute('data-beep')] || '';
         });
-        select.value = member;
       }).catch(function () {});
       fetch('/api/status').then(function (r) { return r.json(); }).then(function (status) {
         if ('battery' in status) return;

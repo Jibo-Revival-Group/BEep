@@ -70,6 +70,8 @@ struct BatteryProvider: AppIntentTimelineProvider {
         if let robot = robot(configuration) {
             battery = await Shared.refreshBattery(for: robot) ?? Shared.battery(for: robot)
         }
+        // The widget refreshes even when BEep is closed, so it's the phone's most regular chance to report.
+        for robot in Shared.robots { await Shared.reportPhoneBattery(to: robot) }
         return Timeline(entries: [BatteryEntry(date: Date(), battery: battery)],
                         policy: .after(Date(timeIntervalSinceNow: 15 * 60)))
     }

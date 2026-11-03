@@ -5,6 +5,7 @@ import WebKit
 /// title and its toolbar buttons, and a floating glass bar replaces BEacon's tabs.
 struct RobotScreen: View {
     @StateObject private var beacon: BEacon
+    @State private var setup = false
 
     init(robot: Robot) {
         _beacon = StateObject(wrappedValue: BEacon(robot: robot))
@@ -22,6 +23,11 @@ struct RobotScreen: View {
         .navigationTitle(beacon.title.isEmpty ? beacon.robot.name : beacon.title)
         .subtitle(beacon.robot.name)
         .navigationBarTitleDisplayMode(.inline)
+        // The first time this robot opens, ask about the iPhone features (once it's reachable).
+        .onChange(of: beacon.loaded) { loaded in
+            if loaded && !UserDefaults.standard.bool(forKey: "onboarded.\(beacon.robot.name)") { setup = true }
+        }
+        .sheet(isPresented: $setup) { SetupView(beacon: beacon) }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 ForEach(beacon.actions, id: \.self) { action in
@@ -146,5 +152,76 @@ private extension View {
         } else {
             background(Theme.green.opacity(0.16), in: Capsule())
         }
+    }
+}
+
+/// First-time questions for a robot: the same settings as BEacon's "On this iPhone", with Skip.
+private struct SetupView: View {
+    let beacon: BEacon
+    @Environment(\.dismiss) private var dismiss
+    @State private var settings = Companion.Settings()
+    @State private var people: [(id: String, name: String)] = []
+    @State private var problem: String?
+    @State private var saving = false
+
+    private var robot: Robot { beacon.robot }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Picker("Who are you?", selection: $settings.member) {
+                        Text("Choose").tag("")
+                        ForEach(people, id: \.id) { Text($0.name).tag($0.id) }
+                    }
+                } footer: {
+                    Text("So \(robot.name) can answer “How is my phone’s battery?”")
+                }
+                Section {
+                    Toggle("Save \(robot.name)’s new photos to this iPhone", isOn: $settings.savePhotos)
+                    Toggle("Notify me when \(robot.name)’s battery is low", isOn: $settings.lowBattery)
+                } footer: {
+                    Text(problem ?? "You can change these later in BEacon under More › Settings › On this iPhone.")
+                        .foregroundStyle(problem == nil ? Color.secondary : Color.red)
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Theme.backdrop.ignoresSafeArea())
+            .navigationTitle("Set up BEep")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Skip") { finish() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { save() }.disabled(saving)
+                }
+            }
+        }
+        .interactiveDismissDisabled()
+        .task {
+            settings = await Companion.shared.settings(for: robot)
+            struct List: Decodable {
+                struct Member: Decodable { let id: String; let firstName: String?; let writtenName: String?; let isJibo: Bool? }
+                let members: [Member]
+            }
+            if let data = try? await Shared.data(robot, "GET", "api/people"), let list = try? JSONDecoder().decode(List.self, from: data) {
+                people = list.members.filter { $0.isJibo != true }.map { ($0.id, $0.firstName ?? $0.writtenName ?? "Someone") }
+            }
+        }
+    }
+
+    private func save() {
+        saving = true
+        Task {
+            let (now, problem) = await Companion.shared.update(settings, for: robot)
+            await beacon.showSettings(now, problem)
+            saving = false
+            settings = now
+            if let problem { self.problem = problem } else { finish() } // a refused permission stays visible
+        }
+    }
+
+    private func finish() {
+        UserDefaults.standard.set(true, forKey: "onboarded.\(robot.name)")
+        dismiss()
     }
 }

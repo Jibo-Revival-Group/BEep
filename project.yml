@@ -53,8 +53,10 @@ targets:
         NSLocalNetworkUsageDescription: BEep looks for Jibo on your Wi-Fi and talks to it there.
         # Jibo's avahi advertises only SSH, under the robot's name.
         NSBonjourServices: [_ssh._tcp]
+        # Any address: a robot's remote address may be plain http over a VPN. (iOS ignores
+        # NSAllowsArbitraryLoads when NSAllowsLocalNetworking is also set, so it replaces it.)
         NSAppTransportSecurity:
-          NSAllowsLocalNetworking: true
+          NSAllowsArbitraryLoads: true
         NSCameraUsageDescription: Take a photo to upload to Jibo.
         NSPhotoLibraryAddUsageDescription: Save Jibo's photos to your library.
         NSCalendarsFullAccessUsageDescription: Send your calendar to Jibo for your personal report.
@@ -92,5 +94,7 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
         NSLocalNetworkUsageDescription: BEep looks for Jibo on your Wi-Fi and talks to it there.
+        # Any address: a robot's remote address may be plain http over a VPN. (iOS ignores
+        # NSAllowsArbitraryLoads when NSAllowsLocalNetworking is also set, so it replaces it.)
         NSAppTransportSecurity:
-          NSAllowsLocalNetworking: true
+          NSAllowsArbitraryLoads: true

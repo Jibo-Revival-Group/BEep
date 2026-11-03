@@ -75,7 +75,7 @@ jobs:
           sleep 15
           xcrun simctl io "$UDID" screenshot home.png
           xcrun simctl terminate "$UDID" com.jiborevival.beep
-          xcrun simctl launch "$UDID" com.jiborevival.beep
+          xcrun simctl launch "$UDID" com.jiborevival.beep -onboarded.Test-Jibo YES
           sleep 20
           xcrun simctl io "$UDID" screenshot robot.png
           xcrun simctl terminate "$UDID" com.jiborevival.beep
@@ -85,7 +85,7 @@ jobs:
           UDID=$(xcrun simctl list devices booted -j | python3 -c "import json,sys; print([d['udid'] for ds in json.load(sys.stdin)['devices'].values() for d in ds][0])")
           xcrun simctl privacy "$UDID" grant photos-add com.jiborevival.beep
           xcrun simctl privacy "$UDID" grant calendar com.jiborevival.beep
-          xcrun simctl launch "$UDID" com.jiborevival.beep -BEepPanel etc \
+          xcrun simctl launch "$UDID" com.jiborevival.beep -BEepPanel etc -onboarded.Test-Jibo YES \
             -savePhotos.Test-Jibo YES -lowBattery.Test-Jibo YES -calendarMember.Test-Jibo zane
           sleep 25
           xcrun simctl io "$UDID" screenshot settings.png

@@ -45,9 +45,10 @@ final class RobotFinder: ObservableObject {
               let (data, _) = try? await URLSession.shared.data(for: URLRequest(url: url, timeoutInterval: 5)),
               let status = try? JSONDecoder().decode(Status.self, from: data),
               status.name == "BEacon" else { return nil }
-        let robot = Robot(name: status.hostname ?? host,
+        var robot = Robot(name: status.hostname ?? host,
                           host: status.addresses?.first(where: { $0.address.contains(".") })?.address ?? host)
         if let index = robots.firstIndex(where: { $0.name == robot.name }) {
+            robot.remote = robots[index].remote
             if robots[index] != robot { robots[index] = robot }
         } else {
             robots.append(robot)
@@ -56,6 +57,23 @@ final class RobotFinder: ObservableObject {
     }
 
     nonisolated static func load() -> [Robot] { Shared.robots }
+
+    /// Saves a robot's remote address after checking BEacon answers there; "" removes it.
+    func setRemote(_ address: String, for robot: Robot) async -> String? {
+        let address = address.trimmingCharacters(in: .whitespaces)
+        var updated = robot
+        updated.remote = address.isEmpty ? nil : (address.contains("://") ? address : "https://" + address)
+        if let url = updated.remoteURL {
+            guard let (data, _) = try? await URLSession.shared.data(for: URLRequest(url: URL(string: "api/status", relativeTo: url)!, timeoutInterval: 10)),
+                  (try? JSONDecoder().decode(Status.self, from: data))?.name == "BEacon" else {
+                return "No BEacon answered at \(url.absoluteString)."
+            }
+        } else if updated.remote != nil {
+            return "That isn't a web address."
+        }
+        if let index = robots.firstIndex(where: { $0.name == robot.name }) { robots[index] = updated }
+        return nil
+    }
 }
 
 private struct Status: Decodable {

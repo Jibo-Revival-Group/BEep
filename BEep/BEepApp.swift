@@ -12,6 +12,12 @@ struct BEepApp: App {
         NotificationCenter.default.addObserver(forName: .EKEventStoreChanged, object: nil, queue: .main) { _ in
             Task { await Companion.shared.syncAll() }
         }
+        UIDevice.current.isBatteryMonitoringEnabled = true
+        for name in [UIDevice.batteryLevelDidChangeNotification, UIDevice.batteryStateDidChangeNotification] {
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { _ in
+                Task { for robot in RobotFinder.load() { await Shared.reportPhoneBattery(to: robot) } }
+            }
+        }
     }
 
     var body: some Scene {
@@ -37,6 +43,9 @@ struct Home: View {
     @State private var address = ""
     @State private var addError: String?
     @State private var converting = false
+    @State private var remoteFor: Robot?
+    @State private var remoteText = ""
+    @State private var remoteError: String?
     // The simulator check sets this to photograph the home screen.
     @State private var opened = UserDefaults.standard.bool(forKey: "BEepStayHome")
 
@@ -67,6 +76,23 @@ struct Home: View {
             if UserDefaults.standard.bool(forKey: "BEepWidgetPreview") { WidgetPreview() }
         }
         .sheet(isPresented: $converting) { ConvertView { finder.restart() } }
+        .alert("Remote address", isPresented: Binding(get: { remoteFor != nil }, set: { if !$0 { remoteFor = nil } }), presenting: remoteFor) { robot in
+            TextField("https://jibo.example.com", text: $remoteText)
+                .keyboardType(.URL)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button("Save") {
+                Task {
+                    if let problem = await finder.setRemote(remoteText, for: robot) {
+                        remoteError = problem
+                        remoteFor = robot // show it again with the problem
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { robot in
+            Text(remoteError ?? "BEep uses this when it can't reach \(robot.name) on your Wi-Fi, such as BEacon through a VPN like Tailscale or your own HTTPS address. BEacon has no password, so don't put it on the open internet. Leave empty to remove it.")
+        }
         .onAppear {
             finder.start()
             // The simulator check opens the converter straight away (a sheet can't start presented).
@@ -116,6 +142,11 @@ struct Home: View {
                 }
                 .buttonStyle(.plain)
                 .contextMenu {
+                    Button("Remote address…", systemImage: "globe") {
+                        remoteText = robot.remote ?? ""
+                        remoteError = nil
+                        remoteFor = robot
+                    }
                     Button("Forget \(robot.name)", systemImage: "trash", role: .destructive) {
                         finder.robots.removeAll { $0 == robot }
                     }
