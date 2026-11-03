@@ -180,6 +180,7 @@ private struct SetupView: View {
                 Section {
                     Toggle("Save \(robot.name)’s new photos to this iPhone", isOn: $settings.savePhotos)
                     Toggle("Notify me when \(robot.name)’s battery is low", isOn: $settings.lowBattery)
+                    Toggle("Send this iPhone’s calendar for my personal report", isOn: $settings.calendar)
                 } footer: {
                     Text(problem ?? "You can change these later in BEacon under More › Settings › On this iPhone.")
                         .foregroundStyle(problem == nil ? Color.secondary : Color.red)

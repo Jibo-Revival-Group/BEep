@@ -16,7 +16,7 @@ actor Companion {
     struct Settings: Codable, Equatable {
         var savePhotos = false
         var lowBattery = false
-        var calendarMember = ""
+        var calendar = false // send this iPhone's calendar to `member`
         var member = ""
     }
 
@@ -24,11 +24,17 @@ actor Companion {
     private let events = EKEventStore()
     private var syncing: Set<String> = []
 
+    /// "calendarMember.<robot>" is who the calendar is currently sent to ("" = off).
+    private func calendarMember(_ robot: Robot) -> String { defaults.string(forKey: "calendarMember.\(robot.name)") ?? "" }
+
     func settings(for robot: Robot) -> Settings {
-        Settings(savePhotos: defaults.bool(forKey: "savePhotos.\(robot.name)"),
-                 lowBattery: defaults.bool(forKey: "lowBattery.\(robot.name)"),
-                 calendarMember: defaults.string(forKey: "calendarMember.\(robot.name)") ?? "",
-                 member: Shared.member(for: robot))
+        let current = calendarMember(robot)
+        // Before the phone had an owner, the calendar picked its own person: that's the owner.
+        if Shared.member(for: robot).isEmpty && !current.isEmpty { Shared.setMember(current, for: robot) }
+        return Settings(savePhotos: defaults.bool(forKey: "savePhotos.\(robot.name)"),
+                        lowBattery: defaults.bool(forKey: "lowBattery.\(robot.name)"),
+                        calendar: !current.isEmpty,
+                        member: Shared.member(for: robot))
     }
 
     /// Applies a change from BEacon, asking for the iPhone permission it needs. Returns the
@@ -56,22 +62,29 @@ actor Companion {
                 problem = "Allow notifications for BEep in iPhone Settings › Notifications."
             }
         }
-        if !wanted.calendarMember.isEmpty && wanted.calendarMember != old.calendarMember {
+        let oldTarget = calendarMember(robot)
+        var target = wanted.calendar ? wanted.member : ""
+        if wanted.calendar && wanted.member.isEmpty {
+            now.calendar = false
+            problem = "Choose who this iPhone belongs to, then turn on the calendar."
+        }
+        if !target.isEmpty && target != oldTarget {
             let allowed = await calendarAccess()
             if !allowed {
-                now.calendarMember = old.calendarMember
+                target = oldTarget
+                now.calendar = !oldTarget.isEmpty
                 problem = "Allow BEep full access to your calendars in iPhone Settings › Privacy & Security › Calendars."
             }
         }
-        if now.calendarMember != old.calendarMember {
+        if target != oldTarget {
             defaults.removeObject(forKey: "sentCalendar.\(robot.name)")
-            if !old.calendarMember.isEmpty {
-                _ = try? await request(robot, "DELETE", "api/people/calendar?id=\(query(old.calendarMember))")
+            if !oldTarget.isEmpty {
+                _ = try? await request(robot, "DELETE", "api/people/calendar?id=\(query(oldTarget))")
             }
         }
         defaults.set(now.savePhotos, forKey: "savePhotos.\(robot.name)")
         defaults.set(now.lowBattery, forKey: "lowBattery.\(robot.name)")
-        defaults.set(now.calendarMember, forKey: "calendarMember.\(robot.name)")
+        defaults.set(target, forKey: "calendarMember.\(robot.name)")
         Shared.setMember(now.member, for: robot)
         await sync(robot)
         return (now, problem)
@@ -97,7 +110,8 @@ actor Companion {
         await Shared.reportPhoneBattery(to: robot)
         if settings.savePhotos { await savePhotos(robot) }
         if settings.lowBattery { await checkBattery(robot) }
-        if !settings.calendarMember.isEmpty { await sendCalendar(to: settings.calendarMember, robot) }
+        let person = calendarMember(robot)
+        if !person.isEmpty { await sendCalendar(to: person, robot) }
     }
 
     nonisolated static func scheduleRefresh() {

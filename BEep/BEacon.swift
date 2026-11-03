@@ -278,9 +278,8 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
         '<div class="form-row"><label for="beep-member">This iPhone belongs to</label>' +
         '<select id="beep-member" data-beep="member"><option value="">Nobody chosen</option></select></div>' +
         '<p class="hint">So Jibo can tell you this phone’s battery when you ask “How is my phone’s battery?”</p>' +
-        '<div class="form-row"><label for="beep-calendar">Use this iPhone’s calendar for</label>' +
-        '<select id="beep-calendar" data-beep="calendarMember"><option value="">Nobody</option></select></div>' +
-        '<p class="hint">Sends the next week of events from this iPhone in place of that person’s calendar link, for their personal report.</p>' +
+        '<label class="unit-choice"><input type="checkbox" data-beep="calendar"><span>Send this iPhone’s calendar for my personal report</span></label>' +
+        '<p class="hint">Sends the next week of events from this iPhone in place of your calendar link.</p>' +
         '<p class="hint">These work while BEep is open and when your iPhone lets it refresh in the background, so they can lag a little.</p>' +
         '<p class="hint" id="beep-settings-status" role="status"></p></div>';
       panel.insertBefore(wrap, panel.firstChild);
@@ -297,7 +296,8 @@ final class BEacon: NSObject, ObservableObject, WKUIDelegate, WKNavigationDelega
       window.__beepSettings = function (settings, problem) {
         wrap.querySelector('[data-beep="savePhotos"]').checked = settings.savePhotos;
         wrap.querySelector('[data-beep="lowBattery"]').checked = settings.lowBattery;
-        chosen = { calendarMember: settings.calendarMember, member: settings.member };
+        wrap.querySelector('[data-beep="calendar"]').checked = settings.calendar;
+        chosen = { member: settings.member };
         [].forEach.call(selects, function (s) { s.value = chosen[s.getAttribute('data-beep')]; });
         wrap.querySelector('#beep-settings-status').textContent = problem;
       };
