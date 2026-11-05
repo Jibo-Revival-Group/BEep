@@ -12,6 +12,14 @@ class ConversionTest {
         assertEquals(Conversion.Outcome.Converted, Conversion.outcome("5X1_PM_EXIT 0"))
         assertTrue(Conversion.outcome("5X1_PM_EXIT 23") is Conversion.Outcome.Failed)
         assertNull(Conversion.outcome("=== Step 2: Stage and install BEam and BEnch ==="))
+        assertEquals(Conversion.Outcome.Updating, Conversion.outcome("run this script again to install BEam and BEnch."))
+    }
+
+    @Test fun neverSetUpRobotsGetTheOobeScript() {
+        assertTrue(Conversion.SCRIPT.startsWith("if [ -f /var/jibo/5x1-pm-oobe-state.json ] || [ ! -s /var/jibo/credentials.json ] || grep -q oobe /var/jibo/mode.json; then "))
+        assertTrue(Conversion.SCRIPT.contains("BEach/master/PM/post-oobe-mod.sh"))
+        assertTrue(Conversion.SCRIPT.contains("else jibo-mount --rw && curl -fsSL -k https://scripts.5x1.com/pm"))
+        assertTrue("runs inside sh -c '...'", !Conversion.SCRIPT.contains("'"))
     }
 
     @Test fun commandMatchesTheIPhoneApp() {

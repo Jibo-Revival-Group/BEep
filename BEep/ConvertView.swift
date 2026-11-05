@@ -56,6 +56,9 @@ struct ConvertView: View {
         case .converted:
             Label("Jibo is restarting into 5x1. He'll show up under Your robots in a couple of minutes.", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(Theme.green)
+        case .updating:
+            Label("Jibo is updating to the final Jibo system first. He'll restart a few times on his own. When the update screens are done, tap Convert again to install 5x1.", systemImage: "arrow.triangle.2.circlepath")
+                .foregroundStyle(Theme.green)
         case .failed(let message):
             Label(message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
         case nil:

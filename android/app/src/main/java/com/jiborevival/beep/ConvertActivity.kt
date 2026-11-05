@@ -80,6 +80,7 @@ class ConvertActivity : Activity() {
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 when (result) {
                     Conversion.Outcome.Converted -> { status.text = "✓ Jibo is restarting into 5x1. He'll show up under Your robots in a couple of minutes."; status.setTextColor(Look.green) }
+                    Conversion.Outcome.Updating -> { status.text = "⟳ Jibo is updating to the final Jibo system first. He'll restart a few times on his own. When the update screens are done, tap Convert again to install 5x1."; status.setTextColor(Look.green) }
                     is Conversion.Outcome.Failed -> { status.text = "⚠ " + result.message; status.setTextColor(Look.red) }
                 }
             }
