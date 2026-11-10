@@ -150,6 +150,20 @@ jobs:
           test ! -f fakerun/5x1-pm.started  # cleared when PM finished
           xcrun simctl terminate "$UDID" com.jiborevival.beep
 
+      - name: Simulator check (BEep BETA has Personal Reports)
+        run: |
+          UDID=$(xcrun simctl list devices booted -j | python3 -c "import json,sys; print([d['udid'] for ds in json.load(sys.stdin)['devices'].values() for d in ds][0])")
+          xcodebuild -project BEep.xcodeproj -scheme BEep -configuration Beta -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath ddbeta \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= -quiet build
+          python3 ci/fake-beacon.py beam/@be/be/beacon/public &
+          dns-sd -R "$(scutil --get LocalHostName)" _ssh._tcp local 22 &
+          xcrun simctl install "$UDID" ddbeta/Build/Products/Beta-iphonesimulator/BEep.app
+          xcrun simctl launch "$UDID" com.jiborevival.beep.beta -BEepPanel reports -onboarded.Test-Jibo YES
+          sleep 25
+          xcrun simctl io "$UDID" screenshot reports.png
+          xcrun simctl terminate "$UDID" com.jiborevival.beep.beta
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -158,6 +172,7 @@ jobs:
             BEep.ipa
             BEep-BETA.ipa
             home.png
+            reports.png
             robot.png
             settings.png
             widget.png
