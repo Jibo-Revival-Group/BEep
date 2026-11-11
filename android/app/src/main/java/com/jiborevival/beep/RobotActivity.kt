@@ -46,11 +46,8 @@ class RobotActivity : Activity() {
         Tab("photos", "Photos", R.drawable.ic_photo_library), Tab("people", "People", R.drawable.ic_group),
         Tab("store", "Store", R.drawable.ic_storefront)
     )
-    // Personal Reports is BETA-only for now (lazy: packageName needs the attached context).
-    private val more by lazy {
-        (if (packageName.endsWith(".beta")) listOf(Tab("reports", "Reports", R.drawable.ic_article)) else emptyList()) +
-            listOf(Tab("server", "Server", R.drawable.ic_dns), Tab("etc", "Settings", R.drawable.ic_settings))
-    }
+    private val more = listOf(Tab("reports", "Reports", R.drawable.ic_article), Tab("server", "Server", R.drawable.ic_dns),
+        Tab("etc", "Settings", R.drawable.ic_settings))
 
     private lateinit var robot: Robot
     private lateinit var web: WebView

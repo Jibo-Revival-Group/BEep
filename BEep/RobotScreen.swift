@@ -72,9 +72,8 @@ struct GlassTabBar: View {
         Tab(panel: "people", title: "People", icon: "person.2"),
         Tab(panel: "store", title: "Store", icon: "storefront")
     ]
-    // Personal Reports is BETA-only for now.
-    private static let more = (Bundle.main.bundleIdentifier?.hasSuffix(".beta") == true
-        ? [Tab(panel: "reports", title: "Reports", icon: "newspaper")] : []) + [
+    private static let more = [
+        Tab(panel: "reports", title: "Reports", icon: "newspaper"),
         Tab(panel: "server", title: "Server", icon: "server.rack"),
         Tab(panel: "etc", title: "Settings", icon: "gearshape")
     ]
