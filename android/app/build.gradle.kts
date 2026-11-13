@@ -28,8 +28,8 @@ android {
         applicationId = "com.jiborevival.beep"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
-        versionName = "1.7"
+        versionCode = 11
+        versionName = "1.8"
     }
     flavorDimensions += "channel"
     productFlavors {

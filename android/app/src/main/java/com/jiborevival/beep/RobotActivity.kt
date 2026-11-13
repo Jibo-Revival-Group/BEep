@@ -44,10 +44,9 @@ class RobotActivity : Activity() {
     private val main = listOf(
         Tab("status", "Status", R.drawable.ic_info), Tab("screen", "Screen", R.drawable.ic_desktop_windows),
         Tab("photos", "Photos", R.drawable.ic_photo_library), Tab("people", "People", R.drawable.ic_group),
-        Tab("store", "Store", R.drawable.ic_storefront)
+        Tab("reports", "Reports", R.drawable.ic_article), Tab("store", "Store", R.drawable.ic_storefront)
     )
-    private val more = listOf(Tab("reports", "Reports", R.drawable.ic_article), Tab("server", "Server", R.drawable.ic_dns),
-        Tab("etc", "Settings", R.drawable.ic_settings))
+    private val more = listOf(Tab("server", "Server", R.drawable.ic_dns), Tab("etc", "Settings", R.drawable.ic_settings))
 
     private lateinit var robot: Robot
     private lateinit var web: WebView
